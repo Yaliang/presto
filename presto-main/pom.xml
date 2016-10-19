@@ -312,16 +312,6 @@
             <artifactId>tpch</artifactId>
             <scope>test</scope>
         </dependency>
-
-        <!-- twitter deps -->
-        <dependency>
-            <groupId>org.apache.thrift</groupId>
-            <artifactId>libthrift</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.scala-lang</groupId>
-            <artifactId>scala-library</artifactId>
-        </dependency>
     </dependencies>
 
     <build>
