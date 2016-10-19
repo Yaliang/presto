@@ -5,7 +5,7 @@
     <parent>
         <groupId>com.facebook.presto</groupId>
         <artifactId>presto-root</artifactId>
-        <version>0.153</version>
+        <version>0.153-tw-0.23</version>
     </parent>
 
     <artifactId>presto-main</artifactId>
@@ -29,6 +29,11 @@
         <dependency>
             <groupId>com.facebook.presto</groupId>
             <artifactId>presto-spi</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.facebook.presto</groupId>
+            <artifactId>presto-array</artifactId>
         </dependency>
 
         <dependency>
@@ -147,6 +152,11 @@
         </dependency>
 
         <dependency>
+            <groupId>com.teradata</groupId>
+            <artifactId>re2j-td</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>io.airlift.discovery</groupId>
             <artifactId>discovery-server</artifactId>
         </dependency>
@@ -247,6 +257,12 @@
             <artifactId>jgrapht-core</artifactId>
         </dependency>
 
+        <!-- used by tests but also needed transitively -->
+        <dependency>
+            <groupId>org.apache.bval</groupId>
+            <artifactId>bval-jsr</artifactId>
+        </dependency>
+
         <!-- for testing -->
         <dependency>
             <groupId>org.testng</groupId>
@@ -298,14 +314,6 @@
         </dependency>
 
         <!-- twitter deps -->
-        <dependency>
-            <groupId>com.twitter</groupId>
-            <artifactId>presto-thrift-java</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.twitter</groupId>
-            <artifactId>util-logging_2.10</artifactId>
-        </dependency>
         <dependency>
             <groupId>org.apache.thrift</groupId>
             <artifactId>libthrift</artifactId>

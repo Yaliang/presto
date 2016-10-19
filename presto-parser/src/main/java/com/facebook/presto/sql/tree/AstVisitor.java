@@ -72,9 +72,29 @@ public abstract class AstVisitor<R, C>
         return visitLiteral(node, context);
     }
 
+    protected R visitDecimalLiteral(DecimalLiteral node, C context)
+    {
+        return visitLiteral(node, context);
+    }
+
     protected R visitStatement(Statement node, C context)
     {
         return visitNode(node, context);
+    }
+
+    protected R visitPrepare(Prepare node, C context)
+    {
+        return visitStatement(node, context);
+    }
+
+    protected R visitDeallocate(Deallocate node, C context)
+    {
+        return visitStatement(node, context);
+    }
+
+    protected R visitExecute(Execute node, C context)
+    {
+        return visitStatement(node, context);
     }
 
     protected R visitQuery(Query node, C context)
@@ -108,6 +128,11 @@ public abstract class AstVisitor<R, C>
     }
 
     protected R visitShowPartitions(ShowPartitions node, C context)
+    {
+        return visitStatement(node, context);
+    }
+
+    protected R visitShowCreate(ShowCreate node, C context)
     {
         return visitStatement(node, context);
     }
@@ -247,6 +272,11 @@ public abstract class AstVisitor<R, C>
         return visitLiteral(node, context);
     }
 
+    protected R visitCharLiteral(CharLiteral node, C context)
+    {
+        return visitLiteral(node, context);
+    }
+
     protected R visitBinaryLiteral(BinaryLiteral node, C context)
     {
         return visitLiteral(node, context);
@@ -347,6 +377,11 @@ public abstract class AstVisitor<R, C>
         return visitLiteral(node, context);
     }
 
+    protected R visitParameter(Parameter node, C context)
+    {
+        return visitExpression(node, context);
+    }
+
     protected R visitLogicalBinaryExpression(LogicalBinaryExpression node, C context)
     {
         return visitExpression(node, context);
@@ -417,7 +452,7 @@ public abstract class AstVisitor<R, C>
         return visitExpression(node, context);
     }
 
-    protected R visitInputReference(InputReference node, C context)
+    protected R visitFieldReference(FieldReference node, C context)
     {
         return visitExpression(node, context);
     }
@@ -445,6 +480,21 @@ public abstract class AstVisitor<R, C>
     protected R visitTableElement(TableElement node, C context)
     {
         return visitNode(node, context);
+    }
+
+    protected R visitCreateSchema(CreateSchema node, C context)
+    {
+        return visitStatement(node, context);
+    }
+
+    protected R visitDropSchema(DropSchema node, C context)
+    {
+        return visitStatement(node, context);
+    }
+
+    protected R visitRenameSchema(RenameSchema node, C context)
+    {
+        return visitStatement(node, context);
     }
 
     protected R visitCreateTable(CreateTable node, C context)
@@ -512,6 +562,11 @@ public abstract class AstVisitor<R, C>
         return visitStatement(node, context);
     }
 
+    protected R visitRevoke(Revoke node, C context)
+    {
+        return visitStatement(node, context);
+    }
+
     protected R visitTransactionMode(TransactionMode node, C context)
     {
         return visitNode(node, context);
@@ -538,6 +593,41 @@ public abstract class AstVisitor<R, C>
     }
 
     protected R visitAtTimeZone(AtTimeZone node, C context)
+    {
+        return visitExpression(node, context);
+    }
+
+    protected R visitGroupBy(GroupBy node, C context)
+    {
+        return visitNode(node, context);
+    }
+
+    protected R visitGroupingElement(GroupingElement node, C context)
+    {
+        return visitNode(node, context);
+    }
+
+    protected R visitCube(Cube node, C context)
+    {
+        return visitGroupingElement(node, context);
+    }
+
+    protected R visitGroupingSets(GroupingSets node, C context)
+    {
+        return visitGroupingElement(node, context);
+    }
+
+    protected R visitRollup(Rollup node, C context)
+    {
+        return visitGroupingElement(node, context);
+    }
+
+    protected R visitSimpleGroupBy(SimpleGroupBy node, C context)
+    {
+        return visitGroupingElement(node, context);
+    }
+
+    protected R visitSymbolReference(SymbolReference node, C context)
     {
         return visitExpression(node, context);
     }
