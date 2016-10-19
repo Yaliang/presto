@@ -108,7 +108,6 @@ public class PrestoServer
                 new ServerMainModule(sqlParserOptions),
                 new GracefulShutdownModule());
 
-
         Bootstrap app = new Bootstrap(modules.build());
 
         try {
