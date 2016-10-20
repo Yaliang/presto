@@ -55,6 +55,7 @@ public final class HiveSessionProperties
                         "Query reads happen as the user submitting the query",
                         config.getReadAsQueryUser(),
                         true),
+                booleanSessionProperty(
                         ORC_BLOOM_FILTERS_ENABLED,
                         "ORC: Enable bloom filters for predicate pushdown",
                         config.isOrcBloomFiltersEnabled(),
