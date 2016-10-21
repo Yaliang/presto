@@ -146,7 +146,7 @@ public final class HiveSessionProperties
     {
         return session.getProperty(READ_AS_QUERY_USER, Boolean.class);
     }
-    
+
     public static DataSize getMaxSplitSize(ConnectorSession session)
     {
         return session.getProperty(MAX_SPLIT_SIZE, DataSize.class);
