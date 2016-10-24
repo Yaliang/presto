@@ -301,32 +301,6 @@ public class HiveClientConfig
         return this;
     }
 
-    public boolean getAllowAddColumn()
-    {
-        return this.allowAddColumn;
-    }
-
-    @Config("hive.allow-add-column")
-    @ConfigDescription("Allow Hive connector to add column")
-    public HiveClientConfig setAllowAddColumn(boolean allowAddColumn)
-    {
-        this.allowAddColumn = allowAddColumn;
-        return this;
-    }
-
-    public boolean getAllowDropTable()
-    {
-        return this.allowDropTable;
-    }
-
-    @Config("hive.allow-drop-table")
-    @ConfigDescription("Allow Hive connector to drop table")
-    public HiveClientConfig setAllowDropTable(boolean allowDropTable)
-    {
-        this.allowDropTable = allowDropTable;
-        return this;
-    }
-
     @NotNull
     public Duration getMetastoreCacheTtl()
     {
