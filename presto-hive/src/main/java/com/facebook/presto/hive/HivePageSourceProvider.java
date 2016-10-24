@@ -98,8 +98,6 @@ public class HivePageSourceProvider
 
     private ConnectorPageSource doCreatePageSource(ConnectorSession session, ConnectorSplit split, List<ColumnHandle> columns)
     {
-        HiveSplit hiveSplit = checkType(split, HiveSplit.class, "split");
-
         List<HiveColumnHandle> hiveColumns = columns.stream()
                 .map(HiveColumnHandle::toHiveColumnHandle)
                 .collect(toList());
