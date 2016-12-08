@@ -60,7 +60,12 @@ public final class Transport
             return new TSocket(host, port, timeoutMillis);
         }
 
-        Socket socks = createSocksSocket(socksProxy);
+        try {
+            Socket socks = createSocksSocket(socksProxy).setReuseAddress(true);
+        }
+        catch (SocketException e) {
+            throw rewriteException(new TTransportException(e.getMessage(), e.getCause()), host);
+        }
         try {
             try {
                 socks.connect(InetSocketAddress.createUnresolved(host, port), timeoutMillis);
