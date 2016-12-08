@@ -33,6 +33,12 @@ public final class Transport
     {
         try {
             TTransport rawTransport = createRaw(host, port, socksProxy, timeoutMillis);
+            try {
+                ((TSocket) rawTransport).getSocket().setReuseAddress(true);
+            }
+            catch (Exception e) {
+                // ignored
+            }
             TTransport authenticatedTransport = authentication.authenticate(rawTransport, host);
             if (!authenticatedTransport.isOpen()) {
                 authenticatedTransport.open();
