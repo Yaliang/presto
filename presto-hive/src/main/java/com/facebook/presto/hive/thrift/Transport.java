@@ -25,6 +25,7 @@ import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.Socket;
 import java.net.SocketAddress;
+import java.net.SocketException;
 
 public final class Transport
 {
@@ -36,8 +37,8 @@ public final class Transport
             try {
                 ((TSocket) rawTransport).getSocket().setReuseAddress(true);
             }
-            catch (Exception e) {
-                // ignored
+            catch (SocketException e) {
+                throw rewriteException(e, host);
             }
             TTransport authenticatedTransport = authentication.authenticate(rawTransport, host);
             if (!authenticatedTransport.isOpen()) {
