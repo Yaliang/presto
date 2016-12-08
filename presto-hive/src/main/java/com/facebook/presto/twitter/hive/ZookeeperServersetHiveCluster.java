@@ -16,6 +16,7 @@ package com.facebook.presto.twitter.hive;
 import com.facebook.presto.hive.HiveCluster;
 import com.facebook.presto.hive.HiveMetastoreClientFactory;
 import com.facebook.presto.hive.metastore.HiveMetastoreClient;
+import com.facebook.presto.spi.PrestoException;
 import com.google.common.net.HostAndPort;
 import io.airlift.log.Logger;
 import org.apache.thrift.transport.TTransportException;
@@ -25,6 +26,7 @@ import javax.inject.Inject;
 import java.util.Collections;
 import java.util.List;
 
+import static com.facebook.presto.hive.HiveErrorCode.HIVE_METASTORE_ERROR;
 import static java.util.Objects.requireNonNull;
 
 public class ZookeeperServersetHiveCluster
@@ -63,6 +65,6 @@ public class ZookeeperServersetHiveCluster
             }
         }
 
-        throw new RuntimeException("Failed connecting to Hive metastore.", lastException);
+        throw new PrestoException(HIVE_METASTORE_ERROR, "Failed connecting to Hive metastore.", lastException);
     }
 }

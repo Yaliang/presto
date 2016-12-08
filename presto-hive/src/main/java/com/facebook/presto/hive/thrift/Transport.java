@@ -38,7 +38,7 @@ public final class Transport
                 ((TSocket) rawTransport).getSocket().setReuseAddress(true);
             }
             catch (SocketException e) {
-                throw rewriteException(e, host);
+                throw rewriteException(new TTransportException(e.getMessage(), e.getCause()), host);
             }
             TTransport authenticatedTransport = authentication.authenticate(rawTransport, host);
             if (!authenticatedTransport.isOpen()) {
