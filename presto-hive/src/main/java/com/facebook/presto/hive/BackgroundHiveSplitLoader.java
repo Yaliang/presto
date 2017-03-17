@@ -31,6 +31,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.PeekingIterator;
 import com.google.common.io.CharStreams;
+import com.twitter.elephantbird.mapred.input.HiveMultiInputFormat;
 import io.airlift.units.DataSize;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
@@ -321,15 +322,15 @@ public class BackgroundHiveSplitLoader
         InputFormat<?, ?> inputFormat = getInputFormat(configuration, schema, false);
         FileSystem fs = hdfsEnvironment.getFileSystem(session.getUser(), path);
 
-        if (inputFormat instanceof SymlinkTextInputFormat) {
+        if (inputFormat instanceof SymlinkTextInputFormat || inputFormat instanceof HiveMultiInputFormat) {
             if (bucketHandle.isPresent()) {
-                throw new PrestoException(StandardErrorCode.NOT_SUPPORTED, "Bucketed table in SymlinkTextInputFormat is not yet supported");
+                throw new PrestoException(StandardErrorCode.NOT_SUPPORTED, String.format("Bucketed table in %s is not yet supported", inputFormat.class.getSimpleName()));
             }
 
             // TODO: This should use an iterator like the HiveFileIterator
             for (Path targetPath : getTargetPathsFromSymlink(fs, path)) {
-                // The input should be in TextInputFormat.
-                TextInputFormat targetInputFormat = new TextInputFormat();
+                // The input should be in TextInputFormat or HiveMultiInputFormat.
+                FileInputFormat targetInputFormat = (inputFormat instanceof SymlinkTextInputFormat) ? new TextInputFormat() : new HiveMultiInputFormat();
                 // get the configuration for the target path -- it may be a different hdfs instance
                 Configuration targetConfiguration = hdfsEnvironment.getConfiguration(targetPath);
                 JobConf targetJob = new JobConf(targetConfiguration);

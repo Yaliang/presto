@@ -834,6 +834,23 @@
                 </exclusions>
             </dependency>
 
+            <dependency>
+                <groupId>com.twitter.elephantbird</groupId>
+                <artifactId>elephant-bird-core</artifactId>
+                <version>4.14</version>
+                <classifier>thrift9</classifier>
+                <exclusions>
+                    <exclusion>
+                        <groupId>commons-logging</groupId>
+                        <artifactId>commons-logging</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>com.hadoop.gplcompression</groupId>
+                        <artifactId>hadoop-lzo</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 
