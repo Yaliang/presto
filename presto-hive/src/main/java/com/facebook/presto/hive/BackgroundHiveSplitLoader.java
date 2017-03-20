@@ -24,7 +24,7 @@ import com.facebook.presto.spi.HostAddress;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.StandardErrorCode;
 import com.facebook.presto.spi.predicate.TupleDomain;
-import com.facebook.presto.twitter.elephantbird.mapred.input.HiveMultiInputFormat;
+import com.facebook.presto.twitter.hive.thrift.ThriftGeneralInputFormat;
 import com.facebook.presto.twitter.hive.util.UgiUtils;
 import com.google.common.base.Throwables;
 import com.google.common.collect.AbstractIterator;
@@ -322,15 +322,15 @@ public class BackgroundHiveSplitLoader
         InputFormat<?, ?> inputFormat = getInputFormat(configuration, schema, false);
         FileSystem fs = hdfsEnvironment.getFileSystem(session.getUser(), path);
 
-        if (inputFormat instanceof SymlinkTextInputFormat || inputFormat instanceof HiveMultiInputFormat) {
+        if (inputFormat instanceof SymlinkTextInputFormat || inputFormat instanceof ThriftGeneralInputFormat) {
             if (bucketHandle.isPresent()) {
                 throw new PrestoException(StandardErrorCode.NOT_SUPPORTED, String.format("Bucketed table in %s is not yet supported", inputFormat.getClass().getSimpleName()));
             }
 
             // TODO: This should use an iterator like the HiveFileIterator
             for (Path targetPath : getTargetPathsFromSymlink(fs, path)) {
-                // The input should be in TextInputFormat or HiveMultiInputFormat.
-                FileInputFormat targetInputFormat = (inputFormat instanceof SymlinkTextInputFormat) ? new TextInputFormat() : new HiveMultiInputFormat();
+                // The input should be in TextInputFormat or ThriftGeneralInputFormat.
+                FileInputFormat targetInputFormat = (inputFormat instanceof SymlinkTextInputFormat) ? new TextInputFormat() : new ThriftGeneralInputFormat();
                 // get the configuration for the target path -- it may be a different hdfs instance
                 Configuration targetConfiguration = hdfsEnvironment.getConfiguration(targetPath);
                 JobConf targetJob = new JobConf(targetConfiguration);
