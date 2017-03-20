@@ -24,6 +24,7 @@ import com.facebook.presto.spi.HostAddress;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.StandardErrorCode;
 import com.facebook.presto.spi.predicate.TupleDomain;
+import com.facebook.presto.twitter.elephantbird.mapred.input.HiveMultiInputFormat;
 import com.facebook.presto.twitter.hive.util.UgiUtils;
 import com.google.common.base.Throwables;
 import com.google.common.collect.AbstractIterator;
@@ -31,7 +32,6 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterators;
 import com.google.common.collect.PeekingIterator;
 import com.google.common.io.CharStreams;
-import com.twitter.elephantbird.mapred.input.HiveMultiInputFormat;
 import io.airlift.units.DataSize;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.BlockLocation;
@@ -324,7 +324,7 @@ public class BackgroundHiveSplitLoader
 
         if (inputFormat instanceof SymlinkTextInputFormat || inputFormat instanceof HiveMultiInputFormat) {
             if (bucketHandle.isPresent()) {
-                throw new PrestoException(StandardErrorCode.NOT_SUPPORTED, String.format("Bucketed table in %s is not yet supported", inputFormat.class.getSimpleName()));
+                throw new PrestoException(StandardErrorCode.NOT_SUPPORTED, String.format("Bucketed table in %s is not yet supported", inputFormat.getClass().getSimpleName()));
             }
 
             // TODO: This should use an iterator like the HiveFileIterator
@@ -334,8 +334,7 @@ public class BackgroundHiveSplitLoader
                 // get the configuration for the target path -- it may be a different hdfs instance
                 Configuration targetConfiguration = hdfsEnvironment.getConfiguration(targetPath);
                 JobConf targetJob = new JobConf(targetConfiguration);
-                targetJob.setInputFormat(TextInputFormat.class);
-                targetInputFormat.configure(targetJob);
+                targetJob.setInputFormat(targetInputFormat.getClass());
                 FileInputFormat.setInputPaths(targetJob, targetPath);
                 InputSplit[] targetSplits = targetInputFormat.getSplits(targetJob, 0);
 
