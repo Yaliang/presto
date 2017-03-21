@@ -322,43 +322,23 @@ public class BackgroundHiveSplitLoader
         InputFormat<?, ?> inputFormat = getInputFormat(configuration, schema, false);
         FileSystem fs = hdfsEnvironment.getFileSystem(session.getUser(), path);
 
-        if (inputFormat instanceof SymlinkTextInputFormat || inputFormat instanceof ThriftGeneralInputFormat) {
+        if (inputFormat instanceof SymlinkTextInputFormat) {
             if (bucketHandle.isPresent()) {
-                throw new PrestoException(StandardErrorCode.NOT_SUPPORTED, String.format("Bucketed table in %s is not yet supported", inputFormat.getClass().getSimpleName()));
+                throw new PrestoException(StandardErrorCode.NOT_SUPPORTED, "Bucketed table in SymlinkTextInputFormat is not yet supported");
             }
 
             // TODO: This should use an iterator like the HiveFileIterator
             for (Path targetPath : getTargetPathsFromSymlink(fs, path)) {
-                // The input should be in TextInputFormat or ThriftGeneralInputFormat.
-                FileInputFormat targetInputFormat = (inputFormat instanceof SymlinkTextInputFormat) ? new TextInputFormat() : new ThriftGeneralInputFormat();
+                // The input should be in TextInputFormat.
+                TextInputFormat targetInputFormat = new TextInputFormat();
                 // get the configuration for the target path -- it may be a different hdfs instance
                 Configuration targetConfiguration = hdfsEnvironment.getConfiguration(targetPath);
                 JobConf targetJob = new JobConf(targetConfiguration);
-                targetJob.setInputFormat(targetInputFormat.getClass());
+                targetJob.setInputFormat(TextInputFormat.class);
+                targetInputFormat.configure(targetJob);
                 FileInputFormat.setInputPaths(targetJob, targetPath);
                 InputSplit[] targetSplits = targetInputFormat.getSplits(targetJob, 0);
-
-                for (InputSplit inputSplit : targetSplits) {
-                    FileSplit split = (FileSplit) inputSplit;
-                    FileSystem targetFilesystem = hdfsEnvironment.getFileSystem(session.getUser(), split.getPath());
-                    FileStatus file = targetFilesystem.getFileStatus(split.getPath());
-                    hiveSplitSource.addToQueue(createHiveSplitIterator(
-                            partitionName,
-                            file.getPath().toString(),
-                            targetFilesystem.getFileBlockLocations(file, split.getStart(), split.getLength()),
-                            split.getStart(),
-                            split.getLength(),
-                            schema,
-                            partitionKeys,
-                            false,
-                            session,
-                            OptionalInt.empty(),
-                            effectivePredicate,
-                            partition.getColumnCoercions()));
-                    if (stopped) {
-                        return;
-                    }
-                }
+                addSplitsToQueue(targetSplits, partitionName, schema, partitionKeys, session, effectivePredicate, partition.getColumnCoercions());
             }
             return;
         }
@@ -368,6 +348,19 @@ public class BackgroundHiveSplitLoader
         if (!buckets.isEmpty()) {
             int bucketCount = buckets.get(0).getBucketCount();
             List<LocatedFileStatus> list = listAndSortBucketFiles(iterator, bucketCount);
+
+            if (inputFormat instanceof ThriftGeneralInputFormat) {
+                for (LocatedFileStatus lfs : list) {
+                    ThriftGeneralInputFormat targetInputFormat = new ThriftGeneralInputFormat();
+                    Configuration targetConfiguration = hdfsEnvironment.getConfiguration(lfs.getPath());
+                    JobConf targetJob = new JobConf(targetConfiguration);
+                    targetJob.setInputFormat(ThriftGeneralInputFormat.class);
+                    InputSplit[] targetSplits = targetInputFormat.getSplits(targetJob, 0);
+                    addSplitsToQueue(targetSplits, partitionName, schema, partitionKeys, session, effectivePredicate, partition.getColumnCoercions());
+                }
+                return;
+            }
+
             List<Iterator<HiveSplit>> iteratorList = new ArrayList<>();
 
             for (HiveBucket bucket : buckets) {
@@ -425,6 +418,39 @@ public class BackgroundHiveSplitLoader
         }
 
         fileIterators.addLast(iterator);
+    }
+
+    private void addSplitsToQueue(
+            InputSplit[] inputSplits,
+            String partitionName,
+            Properties schema,
+            List<HivePartitionKey> partitionKeys,
+            ConnectorSession session,
+            TupleDomain<HiveColumnHandle> effectivePredicate,
+            Map<Integer, HiveType> columnCoercions)
+            throws IOException
+    {
+        for (InputSplit inputSplit : inputSplits) {
+            FileSplit split = (FileSplit) inputSplit;
+            FileSystem targetFilesystem = hdfsEnvironment.getFileSystem(session.getUser(), split.getPath());
+            FileStatus file = targetFilesystem.getFileStatus(split.getPath());
+            hiveSplitSource.addToQueue(createHiveSplitIterator(
+                    partitionName,
+                    file.getPath().toString(),
+                    targetFilesystem.getFileBlockLocations(file, split.getStart(), split.getLength()),
+                    split.getStart(),
+                    split.getLength(),
+                    schema,
+                    partitionKeys,
+                    false,
+                    session,
+                    OptionalInt.empty(),
+                    effectivePredicate,
+                    columnCoercions));
+            if (stopped) {
+                return;
+            }
+        }
     }
 
     private void addToHiveSplitSourceRoundRobin(List<Iterator<HiveSplit>> iteratorList)
