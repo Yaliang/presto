@@ -73,6 +73,9 @@ public class ThriftHiveRecordCursorProvider
             return Optional.empty();
         }
 
+        configuration.setBoolean("elephantbird.mapred.input.bad.record.check.only.in.close", false);
+        configuration.setFloat("elephantbird.mapred.input.bad.record.threshold", 0.0f);
+
         RecordReader<?, ?> recordReader;
         if (path.toString().endsWith(".index")) {
             recordReader = new DummyRecordReader<NullWritable, NullWritable>();

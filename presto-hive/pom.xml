@@ -227,23 +227,6 @@
         </dependency>
 
         <dependency>
-            <groupId>com.twitter.elephantbird</groupId>
-            <artifactId>elephant-bird-core</artifactId>
-            <version>4.14</version>
-            <classifier>thrift9</classifier>
-            <exclusions>
-                <exclusion>
-                    <groupId>commons-logging</groupId>
-                    <artifactId>commons-logging</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.hadoop.gplcompression</groupId>
-                    <artifactId>hadoop-lzo</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-
-        <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
             <version>2.5</version>
@@ -269,6 +252,23 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.twitter.elephantbird</groupId>
+            <artifactId>elephant-bird-core</artifactId>
+            <version>4.14</version>
+            <classifier>thrift9</classifier>
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-logging</groupId>
+                    <artifactId>commons-logging</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.hadoop.gplcompression</groupId>
+                    <artifactId>hadoop-lzo</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- for testing -->
