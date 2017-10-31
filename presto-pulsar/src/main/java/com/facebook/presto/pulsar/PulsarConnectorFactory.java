@@ -63,7 +63,6 @@ public class PulsarConnectorFactory
     {
         requireNonNull(connectorId, "connectorId is null");
         requireNonNull(config, "config is null");
-
         try {
             Bootstrap app = new Bootstrap(
                     new JsonModule(),

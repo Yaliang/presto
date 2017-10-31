@@ -47,7 +47,7 @@ public class PulsarConnectorModule
         binder.bind(PulsarSplitManager.class).in(Scopes.SINGLETON);
         binder.bind(PulsarRecordSetProvider.class).in(Scopes.SINGLETON);
 
-        binder.bind(PulsarSimpleConsumerManager.class).in(Scopes.SINGLETON);
+        binder.bind(PulsarClientManager.class).in(Scopes.SINGLETON);
 
         configBinder(binder).bindConfig(PulsarConnectorConfig.class);
 

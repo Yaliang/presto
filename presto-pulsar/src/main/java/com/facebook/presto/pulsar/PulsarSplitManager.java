@@ -18,32 +18,28 @@ import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.ConnectorSplitSource;
 import com.facebook.presto.spi.ConnectorTableLayoutHandle;
 import com.facebook.presto.spi.FixedSplitSource;
-import com.facebook.presto.spi.HostAddress;
 import com.facebook.presto.spi.PrestoException;
 import com.facebook.presto.spi.connector.ConnectorSplitManager;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import io.airlift.log.Logger;
-import kafka.api.PartitionOffsetRequestInfo;
-import kafka.cluster.Broker;
-import kafka.common.TopicAndPartition;
-import kafka.javaapi.OffsetRequest;
-import kafka.javaapi.OffsetResponse;
-import kafka.javaapi.PartitionMetadata;
-import kafka.javaapi.TopicMetadata;
-import kafka.javaapi.TopicMetadataRequest;
-import kafka.javaapi.TopicMetadataResponse;
-import kafka.javaapi.consumer.SimpleConsumer;
+import org.apache.pulsar.client.admin.PulsarAdmin;
+import org.apache.pulsar.client.admin.PulsarAdminException;
+import org.apache.pulsar.client.api.MessageId;
+import org.apache.pulsar.client.api.PulsarClientException;
+import org.apache.pulsar.client.api.Reader;
+import org.apache.pulsar.client.impl.ConsumerImpl;
 
 import javax.inject.Inject;
 
+import java.lang.reflect.Field;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 
-import static com.facebook.presto.pulsar.PulsarErrorCode.PULSAR_SPLIT_ERROR;
+import static com.facebook.presto.pulsar.PulsarErrorCode.PULSAR_ADMIN_ERROR;
+import static com.facebook.presto.pulsar.PulsarErrorCode.PULSAR_READER_ERROR;
 import static com.facebook.presto.pulsar.PulsarHandleResolver.convertLayout;
 import static java.util.Objects.requireNonNull;
 
@@ -56,94 +52,88 @@ public class PulsarSplitManager
     private static final Logger log = Logger.get(PulsarSplitManager.class);
 
     private final String connectorId;
-    private final PulsarSimpleConsumerManager consumerManager;
-    private final Set<HostAddress> nodes;
+    private final PulsarClientManager clientManager;
+    private final PulsarConnectorConfig connectorConfig;
 
     @Inject
     public PulsarSplitManager(
             PulsarConnectorId connectorId,
             PulsarConnectorConfig connectorConfig,
-            PulsarSimpleConsumerManager consumerManager)
+            PulsarClientManager clientManager)
     {
         this.connectorId = requireNonNull(connectorId, "connectorId is null").toString();
-        this.consumerManager = requireNonNull(consumerManager, "consumerManager is null");
-
-        requireNonNull(connectorConfig, "pulsarConfig is null");
-        this.nodes = ImmutableSet.copyOf(connectorConfig.getNodes());
+        this.clientManager = requireNonNull(clientManager, "consumerManager is null");
+        this.connectorConfig = requireNonNull(connectorConfig, "pulsarConfig is null");
     }
 
     @Override
     public ConnectorSplitSource getSplits(ConnectorTransactionHandle transaction, ConnectorSession session, ConnectorTableLayoutHandle layout)
     {
-        PulsarTableHandle tableHandle = convertLayout(layout).getTable();
-
-        SimpleConsumer simpleConsumer = consumerManager.getConsumer(selectRandom(nodes));
-
-        TopicMetadataRequest topicMetadataRequest = new TopicMetadataRequest(ImmutableList.of(tableHandle.getTopicName()));
-        TopicMetadataResponse topicMetadataResponse = simpleConsumer.send(topicMetadataRequest);
-
-        ImmutableList.Builder<ConnectorSplit> splits = ImmutableList.builder();
-
-        for (TopicMetadata metadata : topicMetadataResponse.topicsMetadata()) {
-            for (PartitionMetadata part : metadata.partitionsMetadata()) {
-                log.debug("Adding Partition %s/%s", metadata.topic(), part.partitionId());
-
-                Broker leader = part.leader();
-                if (leader == null) { // Leader election going on...
-                    log.warn("No leader for partition %s/%s found!", metadata.topic(), part.partitionId());
-                    continue;
-                }
-
-                HostAddress partitionLeader = HostAddress.fromParts(leader.host(), leader.port());
-
-                SimpleConsumer leaderConsumer = consumerManager.getConsumer(partitionLeader);
-                // Kafka contains a reverse list of "end - start" pairs for the splits
-
-                long[] offsets = findAllOffsets(leaderConsumer, metadata.topic(), part.partitionId());
-
-                for (int i = offsets.length - 1; i > 0; i--) {
-                    PulsarSplit split = new PulsarSplit(
-                            connectorId,
-                            metadata.topic(),
-                            tableHandle.getKeyDataFormat(),
-                            tableHandle.getMessageDataFormat(),
-                            part.partitionId(),
-                            offsets[i],
-                            offsets[i - 1],
-                            partitionLeader);
-                    splits.add(split);
-                }
+        System.out.println("Start get splits");
+        try {
+            PulsarTableHandle tableHandle = convertLayout(layout).getTable();
+            PulsarAdmin admin = clientManager.getAdmin(new URL(connectorConfig.getWebServiceUrl()));
+            Reader reader = clientManager.getReader(connectorConfig.getServiceUrl(), tableHandle.getTopicName(), MessageId.earliest);
+            String subscription = getSubscription(reader);
+            System.out.println("get the subscription: " + subscription);
+            long splitSize = connectorConfig.getSplitSize();
+            ImmutableList.Builder<ConnectorSplit> splits = ImmutableList.builder();
+            while (!reader.hasReachedEndOfTopic()) {
+                MessageId startId = reader.readNext().getMessageId();
+                System.out.println("Start id:" + startId.toString() + ", waiting for skipping");
+                admin.persistentTopics().skipMessages(tableHandle.getTopicName(), subscription, splitSize);
+                System.out.println("Skipped" + splitSize + " messages");
+                MessageId endId = reader.readNext().getMessageId();
+                PulsarSplit split = new PulsarSplit(
+                        connectorId,
+                        connectorConfig.getServiceUrl(),
+                        tableHandle.getTopicName(),
+                        tableHandle.getKeyDataFormat(),
+                        tableHandle.getMessageDataFormat(),
+                        -1,
+                        startId,
+                        endId);
+                splits.add(split);
+                System.out.println("New splits:" + startId.toString() + "---" + endId.toString());
             }
+            System.out.println("Got all splits");
+            return new FixedSplitSource(splits.build());
         }
-
-        return new FixedSplitSource(splits.build());
-    }
-
-    private static long[] findAllOffsets(SimpleConsumer consumer, String topicName, int partitionId)
-    {
-        TopicAndPartition topicAndPartition = new TopicAndPartition(topicName, partitionId);
-
-        // The API implies that this will always return all of the offsets. So it seems a partition can not have
-        // more than Integer.MAX_VALUE-1 segments.
-        //
-        // This also assumes that the lowest value returned will be the first segment available. So if segments have been dropped off, this value
-        // should not be 0.
-        PartitionOffsetRequestInfo partitionOffsetRequestInfo = new PartitionOffsetRequestInfo(kafka.api.OffsetRequest.LatestTime(), Integer.MAX_VALUE);
-        OffsetRequest offsetRequest = new OffsetRequest(ImmutableMap.of(topicAndPartition, partitionOffsetRequestInfo), kafka.api.OffsetRequest.CurrentVersion(), consumer.clientId());
-        OffsetResponse offsetResponse = consumer.getOffsetsBefore(offsetRequest);
-
-        if (offsetResponse.hasError()) {
-            short errorCode = offsetResponse.errorCode(topicName, partitionId);
-            log.warn("Offset response has error: %d", errorCode);
-            throw new PrestoException(PULSAR_SPLIT_ERROR, "could not fetch data from Kafka, error code is '" + errorCode + "'");
+        catch (MalformedURLException e) {
+            throw new PrestoException(PULSAR_ADMIN_ERROR, e);
         }
-
-        return offsetResponse.offsets(topicName, partitionId);
+        catch (PulsarAdminException e) {
+            throw new PrestoException(PULSAR_ADMIN_ERROR, e);
+        }
+        catch (PulsarClientException e) {
+            throw new PrestoException(PULSAR_READER_ERROR, e);
+        }
     }
 
     private static <T> T selectRandom(Iterable<T> iterable)
     {
         List<T> list = ImmutableList.copyOf(iterable);
         return list.get(ThreadLocalRandom.current().nextInt(list.size()));
+    }
+
+    private static String getSubscription(Reader reader)
+    {
+        try {
+            Field field = reader.getClass().getDeclaredField("consumer");
+            field.setAccessible(true);
+            Object value = field.get(reader);
+            field.setAccessible(false);
+
+            if (value == null) {
+                return null;
+            }
+            else if (ConsumerImpl.class.isAssignableFrom(value.getClass())) {
+                return ((ConsumerImpl) value).getSubscription();
+            }
+            throw new PrestoException(PULSAR_READER_ERROR, "could not get correct subscription id of reader");
+        }
+        catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new PrestoException(PULSAR_READER_ERROR, "could not get access to the consumer of reader", e);
+        }
     }
 }

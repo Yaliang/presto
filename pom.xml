@@ -73,7 +73,6 @@
         <module>presto-jmx</module>
         <module>presto-record-decoder</module>
         <module>presto-kafka</module>
-        <module>presto-pulsar</module>
         <module>presto-redis</module>
         <module>presto-accumulo</module>
         <module>presto-cassandra</module>
@@ -119,6 +118,8 @@
         <module>presto-thrift-testing-server</module>
         <module>presto-thrift-connector</module>
         <module>presto-matching</module>
+        <module>presto-pulsar-testing-server</module>
+        <module>presto-pulsar</module>
     </modules>
 
     <dependencyManagement>
@@ -354,6 +355,12 @@
             <dependency>
                 <groupId>com.facebook.presto</groupId>
                 <artifactId>presto-pulsar</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.facebook.presto</groupId>
+                <artifactId>presto-pulsar-testing-server</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -855,21 +862,171 @@
 
             <dependency>
                 <groupId>org.apache.pulsar</groupId>
-                <artifactId>pulsar-client</artifactId>
-                <version>1.19.0-incubating</version>
+                <artifactId>pulsar-broker</artifactId>
+                <type>test-jar</type>
+                <version>1.20.0-incubating</version>
                 <exclusions>
                     <exclusion>
-                        <groupId>log4j</groupId>
-                        <artifactId>log4j</artifactId>
+                        <groupId>org.apache.commons</groupId>
+                        <artifactId>commons-lang3</artifactId>
                     </exclusion>
                     <exclusion>
                         <groupId>org.slf4j</groupId>
-                        <artifactId>slf4j-log4j12</artifactId>
+                        <artifactId>slf4j-api</artifactId>
                     </exclusion>
                     <exclusion>
-                        <groupId>net.jpountz.lz4</groupId>
-                        <artifactId>lz4</artifactId>
+                        <groupId>org.apache.pulsar</groupId>
+                        <artifactId>pulsar-common</artifactId>
                     </exclusion>
+                    <exclusion>
+                        <groupId>commons-logging</groupId>
+                        <artifactId>commons-logging</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.apache.pulsar</groupId>
+                        <artifactId>managed-ledger</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.pulsar</groupId>
+                <artifactId>pulsar-broker</artifactId>
+                <version>1.20.0-incubating</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.apache.commons</groupId>
+                        <artifactId>commons-lang3</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.slf4j</groupId>
+                        <artifactId>slf4j-api</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.apache.pulsar</groupId>
+                        <artifactId>pulsar-common</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>commons-logging</groupId>
+                        <artifactId>commons-logging</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.apache.pulsar</groupId>
+                        <artifactId>managed-ledger</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.pulsar</groupId>
+                <artifactId>managed-ledger</artifactId>
+                <type>test-jar</type>
+                <version>1.20.0-incubating</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.apache.commons</groupId>
+                        <artifactId>commons-lang3</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.slf4j</groupId>
+                        <artifactId>slf4j-api</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.apache.pulsar</groupId>
+                        <artifactId>pulsar-common</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>commons-logging</groupId>
+                        <artifactId>commons-logging</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.pulsar</groupId>
+                <artifactId>managed-ledger</artifactId>
+                <version>1.20.0-incubating</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.apache.commons</groupId>
+                        <artifactId>commons-lang3</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.slf4j</groupId>
+                        <artifactId>slf4j-api</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.apache.pulsar</groupId>
+                        <artifactId>pulsar-common</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>commons-logging</groupId>
+                        <artifactId>commons-logging</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.pulsar</groupId>
+                <artifactId>pulsar-client</artifactId>
+                <version>1.20.0-incubating</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.apache.commons</groupId>
+                        <artifactId>commons-lang3</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.slf4j</groupId>
+                        <artifactId>slf4j-api</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.apache.pulsar</groupId>
+                        <artifactId>pulsar-common</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.pulsar</groupId>
+                <artifactId>pulsar-client-admin</artifactId>
+                <version>1.20.0-incubating</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.slf4j</groupId>
+                        <artifactId>slf4j-api</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.apache.pulsar</groupId>
+                        <artifactId>pulsar-common</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.glassfish.hk2</groupId>
+                        <artifactId>hk2-api</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.glassfish.hk2</groupId>
+                        <artifactId>hk2-locator</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.glassfish.hk2</groupId>
+                        <artifactId>hk2-utils</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.glassfish.jersey.core</groupId>
+                        <artifactId>jersey-client</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>org.glassfish.jersey.core</groupId>
+                        <artifactId>jersey-common</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.pulsar</groupId>
+                <artifactId>pulsar-common</artifactId>
+                <version>1.20.0-incubating</version>
+                <exclusions>
                     <exclusion>
                         <groupId>org.slf4j</groupId>
                         <artifactId>slf4j-api</artifactId>
@@ -879,21 +1036,9 @@
 
             <dependency>
                 <groupId>org.apache.pulsar</groupId>
-                <artifactId>pulsar</artifactId>
-                <version>1.19.0-incubating</version>
+                <artifactId>pulsar-checksum</artifactId>
+                <version>1.20.0-incubating</version>
                 <exclusions>
-                    <exclusion>
-                        <groupId>log4j</groupId>
-                        <artifactId>log4j</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>org.slf4j</groupId>
-                        <artifactId>slf4j-log4j12</artifactId>
-                    </exclusion>
-                    <exclusion>
-                        <groupId>net.jpountz.lz4</groupId>
-                        <artifactId>lz4</artifactId>
-                    </exclusion>
                     <exclusion>
                         <groupId>org.slf4j</groupId>
                         <artifactId>slf4j-api</artifactId>

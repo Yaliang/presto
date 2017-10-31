@@ -18,6 +18,7 @@ import com.facebook.presto.spi.HostAddress;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
+import org.apache.pulsar.client.api.MessageId;
 
 import java.util.List;
 
@@ -28,33 +29,33 @@ public class PulsarSplit
         implements ConnectorSplit
 {
     private final String connectorId;
+    private final String serviceUrl;
     private final String topicName;
     private final String keyDataFormat;
     private final String messageDataFormat;
     private final int partitionId;
-    private final long start;
-    private final long end;
-    private final HostAddress leader;
+    private final MessageId start;
+    private final MessageId end;
 
     @JsonCreator
     public PulsarSplit(
             @JsonProperty("connectorId") String connectorId,
+            @JsonProperty("serviceUrl") String serviceUrl,
             @JsonProperty("topicName") String topicName,
             @JsonProperty("keyDataFormat") String keyDataFormat,
             @JsonProperty("messageDataFormat") String messageDataFormat,
             @JsonProperty("partitionId") int partitionId,
-            @JsonProperty("start") long start,
-            @JsonProperty("end") long end,
-            @JsonProperty("leader") HostAddress leader)
+            @JsonProperty("start") MessageId start,
+            @JsonProperty("end") MessageId end)
     {
         this.connectorId = requireNonNull(connectorId, "connector id is null");
+        this.serviceUrl = requireNonNull(serviceUrl, "service url is null");
         this.topicName = requireNonNull(topicName, "topicName is null");
         this.keyDataFormat = requireNonNull(keyDataFormat, "dataFormat is null");
         this.messageDataFormat = requireNonNull(messageDataFormat, "messageDataFormat is null");
         this.partitionId = partitionId;
         this.start = start;
         this.end = end;
-        this.leader = requireNonNull(leader, "leader address is null");
     }
 
     @JsonProperty
@@ -64,13 +65,19 @@ public class PulsarSplit
     }
 
     @JsonProperty
-    public long getStart()
+    public String getServiceUrl()
+    {
+        return serviceUrl;
+    }
+
+    @JsonProperty
+    public MessageId getStart()
     {
         return start;
     }
 
     @JsonProperty
-    public long getEnd()
+    public MessageId getEnd()
     {
         return end;
     }
@@ -99,12 +106,6 @@ public class PulsarSplit
         return partitionId;
     }
 
-    @JsonProperty
-    public HostAddress getLeader()
-    {
-        return leader;
-    }
-
     @Override
     public boolean isRemotelyAccessible()
     {
@@ -114,7 +115,7 @@ public class PulsarSplit
     @Override
     public List<HostAddress> getAddresses()
     {
-        return ImmutableList.of(leader);
+        return ImmutableList.of();
     }
 
     @Override
@@ -128,13 +129,13 @@ public class PulsarSplit
     {
         return toStringHelper(this)
                 .add("connectorId", connectorId)
+                .add("serviceUrl", serviceUrl)
                 .add("topicName", topicName)
                 .add("keyDataFormat", keyDataFormat)
                 .add("messageDataFormat", messageDataFormat)
                 .add("partitionId", partitionId)
                 .add("start", start)
                 .add("end", end)
-                .add("leader", leader)
                 .toString();
     }
 }

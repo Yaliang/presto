@@ -40,14 +40,14 @@ import static java.util.Objects.requireNonNull;
 public class PulsarRecordSetProvider
         implements ConnectorRecordSetProvider
 {
-    private final PulsarSimpleConsumerManager consumerManager;
+    private final PulsarClientManager clientManager;
     private final DecoderRegistry registry;
 
     @Inject
-    public PulsarRecordSetProvider(DecoderRegistry registry, PulsarSimpleConsumerManager consumerManager)
+    public PulsarRecordSetProvider(DecoderRegistry registry, PulsarClientManager clientManager)
     {
         this.registry = requireNonNull(registry, "registry is null");
-        this.consumerManager = requireNonNull(consumerManager, "consumerManager is null");
+        this.clientManager = requireNonNull(clientManager, "clientManager is null");
     }
 
     @Override
@@ -90,6 +90,6 @@ public class PulsarRecordSetProvider
         ImmutableMap<DecoderColumnHandle, FieldDecoder<?>> keyFieldDecoders = keyFieldDecoderBuilder.build();
         ImmutableMap<DecoderColumnHandle, FieldDecoder<?>> messageFieldDecoders = messageFieldDecoderBuilder.build();
 
-        return new PulsarRecordSet(pulsarSplit, consumerManager, handles, keyDecoder, messageDecoder, keyFieldDecoders, messageFieldDecoders);
+        return new PulsarRecordSet(pulsarSplit, clientManager, handles, keyDecoder, messageDecoder, keyFieldDecoders, messageFieldDecoders);
     }
 }

@@ -25,7 +25,9 @@ import static com.facebook.presto.spi.ErrorType.EXTERNAL;
 public enum PulsarErrorCode
         implements ErrorCodeSupplier
 {
-    PULSAR_SPLIT_ERROR(0, EXTERNAL);
+    PULSAR_ADMIN_ERROR(0, EXTERNAL),
+    PULSAR_READER_ERROR(1, EXTERNAL),
+    PULSAR_SPLIT_ERROR(2, EXTERNAL);
 
     private final ErrorCode errorCode;
 

@@ -46,24 +46,24 @@ public class PulsarInternalFieldDescription
     public static final PulsarInternalFieldDescription PARTITION_ID_FIELD = new PulsarInternalFieldDescription("_partition_id", BigintType.BIGINT, "Partition Id");
 
     /**
-     * <tt>_partition_offset</tt> - The current offset of the message in the partition.
-     */
-    public static final PulsarInternalFieldDescription PARTITION_OFFSET_FIELD = new PulsarInternalFieldDescription("_partition_offset", BigintType.BIGINT, "Offset for the message within the partition");
-
-    /**
      * <tt>_segment_start</tt> - Pulsar start offset for the segment which contains the current message. This is per-partition.
      */
-    public static final PulsarInternalFieldDescription SEGMENT_START_FIELD = new PulsarInternalFieldDescription("_segment_start", BigintType.BIGINT, "Segment start offset");
+    public static final PulsarInternalFieldDescription SEGMENT_START_FIELD = new PulsarInternalFieldDescription("_segment_start", createUnboundedVarcharType(), "Segment start message id");
 
     /**
      * <tt>_segment_end</tt> - Pulsar end offset for the segment which contains the current message. This is per-partition. The end offset is the first offset that is *not* in the segment.
      */
-    public static final PulsarInternalFieldDescription SEGMENT_END_FIELD = new PulsarInternalFieldDescription("_segment_end", BigintType.BIGINT, "Segment end offset");
+    public static final PulsarInternalFieldDescription SEGMENT_END_FIELD = new PulsarInternalFieldDescription("_segment_end", createUnboundedVarcharType(), "Segment end message id");
 
     /**
      * <tt>_segment_count</tt> - Running count of messages in a segment.
      */
     public static final PulsarInternalFieldDescription SEGMENT_COUNT_FIELD = new PulsarInternalFieldDescription("_segment_count", BigintType.BIGINT, "Running message count per segment");
+
+    /**
+     * <tt>_partition_offset</tt> - The current offset of the message in the partition.
+     */
+    public static final PulsarInternalFieldDescription MESSAGE_ID_FIELD = new PulsarInternalFieldDescription("_message_id", createUnboundedVarcharType(), "Message id");
 
     /**
      * <tt>_message_corrupt</tt> - True if the row converter could not read the a message. May be null if the row converter does not set a value (e.g. the dummy row converter does not).
@@ -97,7 +97,7 @@ public class PulsarInternalFieldDescription
 
     public static Set<PulsarInternalFieldDescription> getInternalFields()
     {
-        return ImmutableSet.of(PARTITION_ID_FIELD, PARTITION_OFFSET_FIELD,
+        return ImmutableSet.of(PARTITION_ID_FIELD, MESSAGE_ID_FIELD,
                 SEGMENT_START_FIELD, SEGMENT_END_FIELD, SEGMENT_COUNT_FIELD,
                 KEY_FIELD, KEY_CORRUPT_FIELD, KEY_LENGTH_FIELD,
                 MESSAGE_FIELD, MESSAGE_CORRUPT_FIELD, MESSAGE_LENGTH_FIELD);
@@ -149,17 +149,17 @@ public class PulsarInternalFieldDescription
 
     public FieldValueProvider forBooleanValue(boolean value)
     {
-        return new BooleanKafkaFieldValueProvider(value);
+        return new BooleanFieldValueProvider(value);
     }
 
     public FieldValueProvider forLongValue(long value)
     {
-        return new LongKafkaFieldValueProvider(value);
+        return new LongFieldValueProvider(value);
     }
 
     public FieldValueProvider forByteValue(byte[] value)
     {
-        return new BytesKafkaFieldValueProvider(value);
+        return new BytesFieldValueProvider(value);
     }
 
     @Override
@@ -192,12 +192,12 @@ public class PulsarInternalFieldDescription
                 .toString();
     }
 
-    public class BooleanKafkaFieldValueProvider
+    public class BooleanFieldValueProvider
             extends FieldValueProvider
     {
         private final boolean value;
 
-        private BooleanKafkaFieldValueProvider(boolean value)
+        private BooleanFieldValueProvider(boolean value)
         {
             this.value = value;
         }
@@ -221,12 +221,12 @@ public class PulsarInternalFieldDescription
         }
     }
 
-    public class LongKafkaFieldValueProvider
+    public class LongFieldValueProvider
             extends FieldValueProvider
     {
         private final long value;
 
-        private LongKafkaFieldValueProvider(long value)
+        private LongFieldValueProvider(long value)
         {
             this.value = value;
         }
@@ -250,12 +250,12 @@ public class PulsarInternalFieldDescription
         }
     }
 
-    public class BytesKafkaFieldValueProvider
+    public class BytesFieldValueProvider
             extends FieldValueProvider
     {
         private final byte[] value;
 
-        private BytesKafkaFieldValueProvider(byte[] value)
+        private BytesFieldValueProvider(byte[] value)
         {
             this.value = value;
         }

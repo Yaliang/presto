@@ -13,41 +13,21 @@
  */
 package com.facebook.presto.pulsar;
 
-import com.facebook.presto.spi.HostAddress;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableSet;
 import io.airlift.configuration.Config;
-import io.airlift.units.DataSize;
-import io.airlift.units.DataSize.Unit;
 import io.airlift.units.Duration;
 import io.airlift.units.MinDuration;
 
+import javax.validation.constraints.Min;
 import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Size;
 
 import java.io.File;
 import java.util.Set;
 
-import static com.google.common.collect.Iterables.transform;
-
 public class PulsarConnectorConfig
 {
     private static final int PULSAR_DEFAULT_PORT = 6650;
-
-    /**
-     * Seed nodes for Pulsar cluster. At least one must exist.
-     */
-    private Set<HostAddress> nodes = ImmutableSet.of();
-
-    /**
-     * Timeout to connect to Pulsar.
-     */
-    private Duration pulsarConnectTimeout = Duration.valueOf("10s");
-
-    /**
-     * Buffer size for connecting to Pulsar.
-     */
-    private DataSize pulsarBufferSize = new DataSize(64, Unit.KILOBYTE);
 
     /**
      * The schema name to use in the connector.
@@ -68,6 +48,26 @@ public class PulsarConnectorConfig
      * Whether internal columns are shown in table metadata or not. Default is no.
      */
     private boolean hideInternalColumns = true;
+
+    private String webServiceUrl = "";
+    private String serviceUrl = "";
+    private int pulsarQueueSize = 1_000;
+    private int splitSize = 10_000;
+    private boolean adminUseTls = false;
+    private boolean adminTlsAllowInsecureConnection = false;
+    private String adminAuthPluginClassName = "";
+    private String adminAuthParams = "";
+    private String adminTlsTrustCertsFilePath = "";
+
+    private boolean readerUseTls = false;
+    private boolean readerTlsAllowInsecureConnection = false;
+    private String readerAuthPluginClassName = "";
+    private String readerAuthParams = "";
+    private String readerTlsTrustCertsFilePath = "";
+    private int connectionsPerBroker = 1;
+    private int numIoThreads = 1;
+    private int numListenerThreads = 1;
+    private Duration operationTimeout = Duration.valueOf("30s");
 
     @NotNull
     public File getTableDescriptionDir()
@@ -108,41 +108,53 @@ public class PulsarConnectorConfig
         return this;
     }
 
-    @Size(min = 1)
-    public Set<HostAddress> getNodes()
+    @NotNull
+    public String getServiceUrl()
     {
-        return nodes;
+        return serviceUrl;
     }
 
-    @Config("pulsar.nodes")
-    public PulsarConnectorConfig setNodes(String nodes)
+    @Config("pulsar.service-url")
+    public PulsarConnectorConfig setServiceUrl(String serviceUrl)
     {
-        this.nodes = (nodes == null) ? null : parseNodes(nodes);
+        this.serviceUrl = serviceUrl;
         return this;
     }
 
-    @MinDuration("1s")
-    public Duration getPulsarConnectTimeout()
+    @NotNull
+    public String getWebServiceUrl()
     {
-        return pulsarConnectTimeout;
+        return webServiceUrl;
     }
 
-    @Config("pulsar.connect-timeout")
-    public PulsarConnectorConfig setPulsarConnectTimeout(String pulsarConnectTimeout)
+    @Config("pulsar.web-service-url")
+    public PulsarConnectorConfig setWebServiceUrl(String webServiceUrl)
     {
-        this.pulsarConnectTimeout = Duration.valueOf(pulsarConnectTimeout);
+        this.webServiceUrl = webServiceUrl;
         return this;
     }
 
-    public DataSize getPulsarBufferSize()
+    public int getSplitSize()
     {
-        return pulsarBufferSize;
+        return splitSize;
     }
 
-    @Config("pulsar.buffer-size")
-    public PulsarConnectorConfig setPulsarBufferSize(String pulsarBufferSize)
+    @Config("pulsar.split-size")
+    public PulsarConnectorConfig setSplitSize(int splitSize)
     {
-        this.pulsarBufferSize = DataSize.valueOf(pulsarBufferSize);
+        this.splitSize = splitSize;
+        return this;
+    }
+
+    public int getPulsarQueueSize()
+    {
+        return pulsarQueueSize;
+    }
+
+    @Config("pulsar.queue-size")
+    public PulsarConnectorConfig setPulsarQueueSize(int pulsarQueueSize)
+    {
+        this.pulsarQueueSize = pulsarQueueSize;
         return this;
     }
 
@@ -158,14 +170,181 @@ public class PulsarConnectorConfig
         return this;
     }
 
-    public static ImmutableSet<HostAddress> parseNodes(String nodes)
+    public boolean isAdminUseTls()
     {
-        Splitter splitter = Splitter.on(',').omitEmptyStrings().trimResults();
-        return ImmutableSet.copyOf(transform(splitter.split(nodes), PulsarConnectorConfig::toHostAddress));
+        return adminUseTls;
     }
 
-    private static HostAddress toHostAddress(String value)
+    @Config("pulsar.admin-use-tls")
+    public PulsarConnectorConfig setAdminUseTls(boolean adminUseTls)
     {
-        return HostAddress.fromString(value).withDefaultPort(PULSAR_DEFAULT_PORT);
+        this.adminUseTls = adminUseTls;
+        return this;
+    }
+
+    public boolean isAdminTlsAllowInsecureConnection()
+    {
+        return adminTlsAllowInsecureConnection;
+    }
+
+    @Config("pulsar.admin-tls-allow-insecure-connection")
+    public PulsarConnectorConfig setAdminTlsAllowInsecureConnection(boolean adminTlsAllowInsecureConnection)
+    {
+        this.adminTlsAllowInsecureConnection = adminTlsAllowInsecureConnection;
+        return this;
+    }
+
+    @NotNull
+    public String getAdminAuthPluginClassName()
+    {
+        return adminAuthPluginClassName;
+    }
+
+    @Config("pulsar.admin-auth-plugin-class-name")
+    public PulsarConnectorConfig setAdminAuthPluginClassName(String adminAuthPluginClassName)
+    {
+        this.adminAuthPluginClassName = adminAuthPluginClassName;
+        return this;
+    }
+
+    @NotNull
+    public String getAdminAuthParams()
+    {
+        return adminAuthParams;
+    }
+
+    @Config("pulsar.admin-auth-params")
+    public PulsarConnectorConfig setAdminAuthParams(String adminAuthParams)
+    {
+        this.adminAuthParams = adminAuthParams;
+        return this;
+    }
+
+    @NotNull
+    public String getAdminTlsTrustCertsFilePath()
+    {
+        return adminTlsTrustCertsFilePath;
+    }
+
+    @Config("pulsar.admin-tls-trust-certs-file-path")
+    public PulsarConnectorConfig setAdminTlsTrustCertsFilePath(String adminTlsTrustCertsFilePath)
+    {
+        this.adminTlsTrustCertsFilePath = adminTlsTrustCertsFilePath;
+        return this;
+    }
+
+    public boolean isReaderUseTls()
+    {
+        return readerUseTls;
+    }
+
+    @Config("pulsar.reader-use-tls")
+    public PulsarConnectorConfig setReaderUseTls(boolean readerUseTls)
+    {
+        this.readerUseTls = readerUseTls;
+        return this;
+    }
+
+    public boolean isReaderTlsAllowInsecureConnection()
+    {
+        return readerTlsAllowInsecureConnection;
+    }
+
+    @Config("pulsar.reader-tls-allow-insecure-connection")
+    public PulsarConnectorConfig setReaderTlsAllowInsecureConnection(boolean readerTlsAllowInsecureConnection)
+    {
+        this.readerTlsAllowInsecureConnection = readerTlsAllowInsecureConnection;
+        return this;
+    }
+
+    @NotNull
+    public String getReaderAuthPluginClassName()
+    {
+        return readerAuthPluginClassName;
+    }
+
+    @Config("pulsar.reader-auth-plugin-class-name")
+    public PulsarConnectorConfig setReaderAuthPluginClassName(String readerAuthPluginClassName)
+    {
+        this.readerAuthPluginClassName = readerAuthPluginClassName;
+        return this;
+    }
+
+    @NotNull
+    public String getReaderAuthParams()
+    {
+        return readerAuthParams;
+    }
+
+    @Config("pulsar.reader-auth-params")
+    public PulsarConnectorConfig setReaderAuthParams(String readerAuthParams)
+    {
+        this.readerAuthParams = readerAuthParams;
+        return this;
+    }
+
+    @NotNull
+    public String getReaderTlsTrustCertsFilePath()
+    {
+        return readerTlsTrustCertsFilePath;
+    }
+
+    @Config("pulsar.reader-tls-trust-certs-file-path")
+    public PulsarConnectorConfig setReaderTlsTrustCertsFilePath(String readerTlsTrustCertsFilePath)
+    {
+        this.readerTlsTrustCertsFilePath = readerTlsTrustCertsFilePath;
+        return this;
+    }
+
+    @Min(1)
+    public int getConnectionsPerBroker()
+    {
+        return connectionsPerBroker;
+    }
+
+    @Config("pulsar.reader-max-connections-per-broker")
+    public PulsarConnectorConfig setConnectionsPerBroker(int connectionsPerBroker)
+    {
+        this.connectionsPerBroker = connectionsPerBroker;
+        return this;
+    }
+
+    @Min(1)
+    public int getNumIoThreads()
+    {
+        return numIoThreads;
+    }
+
+    @Config("pulsar.reader-max-io-threads")
+    public PulsarConnectorConfig setNumIoThreads(int numIoThreads)
+    {
+        this.numIoThreads = numIoThreads;
+        return this;
+    }
+
+    @Min(1)
+    public int getNumListenerThreads()
+    {
+        return numListenerThreads;
+    }
+
+    @Config("pulsar.reader-max-listener-threads")
+    public PulsarConnectorConfig setNumListenerThreads(int numListenerThreads)
+    {
+        this.numListenerThreads = numListenerThreads;
+        return this;
+    }
+
+    @MinDuration("1ms")
+    public Duration getOperationTimeout()
+    {
+        return operationTimeout;
+    }
+
+    @Config("pulsar.reader-operation-timeout")
+    public PulsarConnectorConfig setOperationTimeout(Duration operationTimeout)
+    {
+        this.operationTimeout = operationTimeout;
+        return this;
     }
 }

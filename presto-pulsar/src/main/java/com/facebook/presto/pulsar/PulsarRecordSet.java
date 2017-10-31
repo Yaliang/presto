@@ -26,19 +26,15 @@ import com.google.common.collect.ImmutableSet;
 import io.airlift.log.Logger;
 import io.airlift.slice.Slice;
 import io.airlift.slice.Slices;
-import kafka.api.FetchRequest;
-import kafka.api.FetchRequestBuilder;
-import kafka.javaapi.FetchResponse;
-import kafka.javaapi.consumer.SimpleConsumer;
-import kafka.message.MessageAndOffset;
+import org.apache.pulsar.client.api.Message;
+import org.apache.pulsar.client.api.PulsarClientException;
+import org.apache.pulsar.client.api.Reader;
 
-import java.nio.ByteBuffer;
+import java.io.IOException;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.facebook.presto.pulsar.PulsarErrorCode.PULSAR_SPLIT_ERROR;
 import static com.google.common.base.Preconditions.checkArgument;
@@ -56,7 +52,7 @@ public class PulsarRecordSet
     private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
 
     private final PulsarSplit split;
-    private final PulsarSimpleConsumerManager consumerManager;
+    private final PulsarClientManager clientManager;
 
     private final RowDecoder keyDecoder;
     private final RowDecoder messageDecoder;
@@ -69,7 +65,7 @@ public class PulsarRecordSet
     private final Set<FieldValueProvider> globalInternalFieldValueProviders;
 
     PulsarRecordSet(PulsarSplit split,
-            PulsarSimpleConsumerManager consumerManager,
+                    PulsarClientManager clientManager,
             List<DecoderColumnHandle> columnHandles,
             RowDecoder keyDecoder,
             RowDecoder messageDecoder,
@@ -80,10 +76,10 @@ public class PulsarRecordSet
 
         this.globalInternalFieldValueProviders = ImmutableSet.of(
             PulsarInternalFieldDescription.PARTITION_ID_FIELD.forLongValue(split.getPartitionId()),
-            PulsarInternalFieldDescription.SEGMENT_START_FIELD.forLongValue(split.getStart()),
-            PulsarInternalFieldDescription.SEGMENT_END_FIELD.forLongValue(split.getEnd()));
+            PulsarInternalFieldDescription.SEGMENT_START_FIELD.forByteValue(split.getStart().toByteArray()),
+            PulsarInternalFieldDescription.SEGMENT_END_FIELD.forByteValue(split.getEnd().toByteArray()));
 
-        this.consumerManager = requireNonNull(consumerManager, "consumerManager is null");
+        this.clientManager = requireNonNull(clientManager, "clientManager is null");
 
         this.keyDecoder = requireNonNull(keyDecoder, "rowDecoder is null");
         this.messageDecoder = requireNonNull(messageDecoder, "rowDecoder is null");
@@ -118,9 +114,8 @@ public class PulsarRecordSet
     {
         private long totalBytes;
         private long totalMessages;
-        private long cursorOffset = split.getStart();
-        private Iterator<MessageAndOffset> messageAndOffsetIterator;
-        private final AtomicBoolean reported = new AtomicBoolean();
+        private final Reader reader = clientManager.getReader(split.getServiceUrl(), split.getTopicName(), split.getStart(), PULSAR_READ_BUFFER_SIZE);
+        private Message message;
 
         private FieldValueProvider[] fieldValueProviders;
 
@@ -150,64 +145,30 @@ public class PulsarRecordSet
         @Override
         public boolean advanceNextPosition()
         {
-            while (true) {
-                if (cursorOffset >= split.getEnd()) {
-                    return endOfData(); // Split end is exclusive.
+            try {
+                if (reader.hasReachedEndOfTopic()) {
+                    return false;
                 }
-                // Create a fetch request
-                openFetchRequest();
-
-                while (messageAndOffsetIterator.hasNext()) {
-                    MessageAndOffset currentMessageAndOffset = messageAndOffsetIterator.next();
-                    long messageOffset = currentMessageAndOffset.offset();
-
-                    if (messageOffset >= split.getEnd()) {
-                        return endOfData(); // Past our split end. Bail.
-                    }
-
-                    if (messageOffset >= cursorOffset) {
-                        return nextRow(currentMessageAndOffset);
-                    }
-                }
-                messageAndOffsetIterator = null;
+                message = reader.readNext();
             }
+            catch (PulsarClientException e) {
+                throw new PrestoException(PULSAR_SPLIT_ERROR, "Failed to read next message");
+            }
+            return message != null && !message.getMessageId().equals(split.getEnd()) && nextRow(message);
         }
 
-        private boolean endOfData()
+        private boolean nextRow(Message message)
         {
-            if (!reported.getAndSet(true)) {
-                log.debug("Found a total of %d messages with %d bytes (%d messages expected). Last Offset: %d (%d, %d)",
-                        totalMessages, totalBytes, split.getEnd() - split.getStart(),
-                        cursorOffset, split.getStart(), split.getEnd());
-            }
-            return false;
-        }
-
-        private boolean nextRow(MessageAndOffset messageAndOffset)
-        {
-            cursorOffset = messageAndOffset.offset() + 1; // Cursor now points to the next message.
-            totalBytes += messageAndOffset.message().payloadSize();
+            totalBytes += message.getData().length;
             totalMessages++;
-
-            byte[] keyData = EMPTY_BYTE_ARRAY;
-            byte[] messageData = EMPTY_BYTE_ARRAY;
-            ByteBuffer key = messageAndOffset.message().key();
-            if (key != null) {
-                keyData = new byte[key.remaining()];
-                key.get(keyData);
-            }
-
-            ByteBuffer message = messageAndOffset.message().payload();
-            if (message != null) {
-                messageData = new byte[message.remaining()];
-                message.get(messageData);
-            }
+            byte[] keyData = message.hasKey() ? message.getKey().getBytes() : EMPTY_BYTE_ARRAY;
+            byte[] messageData = message.getData();
 
             Set<FieldValueProvider> fieldValueProviders = new HashSet<>();
 
             fieldValueProviders.addAll(globalInternalFieldValueProviders);
             fieldValueProviders.add(PulsarInternalFieldDescription.SEGMENT_COUNT_FIELD.forLongValue(totalMessages));
-            fieldValueProviders.add(PulsarInternalFieldDescription.PARTITION_OFFSET_FIELD.forLongValue(messageAndOffset.offset()));
+            fieldValueProviders.add(PulsarInternalFieldDescription.MESSAGE_ID_FIELD.forByteValue(message.getMessageId().toByteArray()));
             fieldValueProviders.add(PulsarInternalFieldDescription.MESSAGE_FIELD.forByteValue(messageData));
             fieldValueProviders.add(PulsarInternalFieldDescription.MESSAGE_LENGTH_FIELD.forLongValue(messageData.length));
             fieldValueProviders.add(PulsarInternalFieldDescription.KEY_FIELD.forByteValue(keyData));
@@ -293,29 +254,10 @@ public class PulsarRecordSet
         @Override
         public void close()
         {
-        }
-
-        private void openFetchRequest()
-        {
-            if (messageAndOffsetIterator == null) {
-                log.debug("Fetching %d bytes from offset %d (%d - %d). %d messages read so far", PULSAR_READ_BUFFER_SIZE, cursorOffset, split.getStart(), split.getEnd(), totalMessages);
-                FetchRequest req = new FetchRequestBuilder()
-                        .clientId("presto-worker-" + Thread.currentThread().getName())
-                        .addFetch(split.getTopicName(), split.getPartitionId(), cursorOffset, PULSAR_READ_BUFFER_SIZE)
-                        .build();
-
-                // TODO - this should look at the actual node this is running on and prefer
-                // that copy if running locally. - look into NodeInfo
-                SimpleConsumer consumer = consumerManager.getConsumer(split.getLeader());
-
-                FetchResponse fetchResponse = consumer.fetch(req);
-                if (fetchResponse.hasError()) {
-                    short errorCode = fetchResponse.errorCode(split.getTopicName(), split.getPartitionId());
-                    log.warn("Fetch response has error: %d", errorCode);
-                    throw new PrestoException(PULSAR_SPLIT_ERROR, "could not fetch data from Pulsar, error code is '" + errorCode + "'");
-                }
-
-                messageAndOffsetIterator = fetchResponse.messageSet(split.getTopicName(), split.getPartitionId()).iterator();
+            try {
+                reader.close();
+            }
+            catch (IOException ignored) {
             }
         }
     }
