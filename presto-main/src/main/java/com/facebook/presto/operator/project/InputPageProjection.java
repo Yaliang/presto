@@ -19,6 +19,7 @@ import com.facebook.presto.operator.Work;
 import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.Page;
 import com.facebook.presto.spi.block.Block;
+import com.facebook.presto.spi.block.DictionaryBlock;
 import com.facebook.presto.spi.type.Type;
 
 import static java.util.Objects.requireNonNull;
@@ -65,6 +66,9 @@ public class InputPageProjection
         }
         else {
             result = block.getRegion(selectedPositions.getOffset(), selectedPositions.size());
+        }
+        if (result instanceof DictionaryBlock) {
+            result = ((DictionaryBlock) result).compact();
         }
         return new CompletedWork<>(result);
     }

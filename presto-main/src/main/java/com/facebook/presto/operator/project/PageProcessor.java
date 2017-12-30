@@ -65,6 +65,10 @@ public class PageProcessor
                 });
         this.projections = requireNonNull(projections, "projections is null").stream()
                 .map(projection -> {
+                    System.out.println("++++++++++++++++++++"
+                            + "\nprojection.getClass(): " + projection.getClass().toString()
+                            + "\nprojection.getInputChannels().size(): " + projection.getInputChannels().size()
+                            + "\nprojection.isDeterministic(): " + projection.isDeterministic());
                     if (projection.getInputChannels().size() == 1 && projection.isDeterministic()) {
                         return new DictionaryAwarePageProjection(projection, dictionarySourceIdFunction);
                     }

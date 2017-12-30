@@ -472,10 +472,25 @@ public class MultiChannelGroupByHash
         if (processDictionary && inputHashChannel.isPresent()) {
             Block inputHashBlock = page.getBlock(inputHashChannel.get());
             DictionaryBlock inputDataBlock = (DictionaryBlock) page.getBlock(channels[0]);
-
+            System.out.println("==================================="
+                    + "\nthis.hashTypes: [" + this.hashTypes.stream().map(Type::getDisplayName).reduce((a, b) -> a + "," + b) + "]"
+                    + "\nthis.types: [" + this.types.stream().map(Type::getDisplayName).reduce((a, b) -> a + "," + b) + "]"
+                    + "\nthis.channels: " + Arrays.toString(this.channels)
+                    + "\nthis.inputHashChannel: " + inputHashChannel.get().toString()
+                    + "\ninputHashBlock.class: " + inputHashBlock.getClass()
+                    + "\ninputDataBlock.class: " + inputDataBlock.getClass()
+                    + "\npage.getChannelCount: " + page.getChannelCount()
+                    + "\npage.blocks: " + Arrays.stream(page.getBlocks()).map(Object::getClass).map(Class::toString).reduce("", (a, b) -> a + "\n" + b)
+                    + "\npage.blocks-dictionary: " + Arrays.stream(page.getBlocks())
+                    .map(x -> (x instanceof DictionaryBlock) ? ((DictionaryBlock) x).getDictionary() : x)
+                    .map(x -> x.getClass().toString() + ":[with-position-size]:" + x.getPositionCount())
+                    .reduce("", (a, b) -> a + "\n" + b)
+                    + "\nthread: " + Arrays.stream(Thread.currentThread().getStackTrace()).map(StackTraceElement::toString).reduce("[", (a, b) -> a + "\n" + b));
             verify(inputHashBlock instanceof DictionaryBlock, "data channel is dictionary encoded but hash channel is not");
             verify(((DictionaryBlock) inputHashBlock).getDictionarySourceId().equals(inputDataBlock.getDictionarySourceId()),
                     "dictionarySourceIds of data block and hash block do not match");
+            // return inputHashBlock instanceof DictionaryBlock &&
+            //        ((DictionaryBlock) inputHashBlock).getDictionarySourceId().equals(inputDataBlock.getDictionarySourceId());
         }
         return processDictionary;
     }

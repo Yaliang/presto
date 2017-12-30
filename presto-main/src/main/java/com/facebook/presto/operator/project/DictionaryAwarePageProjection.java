@@ -142,6 +142,7 @@ public class DictionaryAwarePageProjection
                     // and force reprocessing of the whole block using the normal code.
                     // The second pass may not fail due to filtering.
                     // todo dictionary processing should be able to tolerate failures of unused elements
+                    System.out.println("-------------dictionary processing is failed------------");
                     lastOutputDictionary = Optional.empty();
                     dictionaryProcessingProjectionWork = null;
                 }
@@ -150,6 +151,11 @@ public class DictionaryAwarePageProjection
             if (block instanceof DictionaryBlock) {
                 // Record the usage count regardless of dictionary processing choice, so we have stats for next time.
                 // This guarantees recording will happen once and only once regardless of whether dictionary processing was attempted and whether it succeeded.
+                System.out.println("&&&&&&&&&&&selectedPositions.isList(): " + selectedPositions.isList()
+                        + "\nselectedPositions.getOffset(): " + selectedPositions.getOffset()
+                        + "\nselectedPositions.size(): " + selectedPositions.size()
+                        + "\nblock.positionCount: " + block.getPositionCount()
+                        + "\nblock.dictionary.positionCount: " + ((DictionaryBlock) block).getDictionary().getPositionCount());
                 lastDictionaryUsageCount += selectedPositions.size();
             }
 
@@ -175,6 +181,7 @@ public class DictionaryAwarePageProjection
             // there is no dictionary handling or dictionary handling failed; fall back to general projection
             verify(dictionaryProcessingProjectionWork == null);
             verify(fallbackProcessingProjectionWork == null);
+            System.out.println("*******there is no dictionary handling or dictionary handling failed; fall back to general projection");
             fallbackProcessingProjectionWork = projection.project(session, yieldSignal, new Page(block), selectedPositions);
             if (fallbackProcessingProjectionWork.process()) {
                 result = fallbackProcessingProjectionWork.getResult();
@@ -206,8 +213,19 @@ public class DictionaryAwarePageProjection
             //   there is only one entry in the dictionary
             //   this is the first block
             //   the last dictionary was used for more positions than were in the dictionary
-            boolean shouldProcessDictionary = dictionary.get().getPositionCount() == 1 || lastInputDictionary == null || lastDictionaryUsageCount >= lastInputDictionary.getPositionCount();
+            boolean shouldProcessDictionary = dictionary.get().getPositionCount() == 1
+                    || dictionary.get().getPositionCount() <= selectedPositions.size()
+                    || lastInputDictionary == null || lastDictionaryUsageCount >= lastInputDictionary.getPositionCount();
 
+            System.out.println(">>>>>>shouldn process dictionary? " + shouldProcessDictionary
+                    + " >>>>>>>>>because>>>>>dictionary.get().getPositionCount() == 1:"
+                    + (dictionary.get().getPositionCount() == 1) + ">>>>>>>>>>dictionary.get().getPositionCount():"
+                    + dictionary.get().getPositionCount() + " <= selectedPositions.size(): " + selectedPositions.size()
+                    + ">" + (dictionary.get().getPositionCount() <= selectedPositions.size())
+                    + " >>>>>>>lastInputDictionary == null:"
+                    + (lastInputDictionary == null) + " >>>>>>>>lastDictionaryUsageCount: " + lastDictionaryUsageCount
+                    + " >= lastInputDictionary.getPositionCount(): " + (lastInputDictionary != null ? lastInputDictionary.getPositionCount() : -1) + ">"
+                    + (lastInputDictionary != null && lastDictionaryUsageCount >= lastInputDictionary.getPositionCount()));
             // record the usage count regardless of dictionary processing choice, so we have stats for next time
             lastDictionaryUsageCount = 0;
             lastInputDictionary = dictionary.get();
