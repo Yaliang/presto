@@ -105,6 +105,7 @@ public class PrestoLdapCliTests
     public void shouldRunQueryWithLdap()
             throws IOException, InterruptedException
     {
+        System.out.println("shouldRunQueryWithLdap");
         launchPrestoCliWithServerArgument();
         presto.waitForPrompt();
         presto.getProcessInput().println("select * from hive.default.nation;");
