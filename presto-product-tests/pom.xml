@@ -40,6 +40,7 @@
         <dependency>
             <groupId>com.facebook.presto</groupId>
             <artifactId>presto-cli</artifactId>
+            <version>0.191</version>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
