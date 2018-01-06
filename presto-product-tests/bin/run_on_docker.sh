@@ -193,7 +193,8 @@ if [[ "$ENVIRONMENT" == "multinode-tls" ]]; then
     CLI_ARGUMENTS="--server https://presto-master.docker.cluster:7778 --keystore-path /docker/volumes/conf/presto/etc/docker.cluster.jks --keystore-password 123456"
 fi
 if [[ "$ENVIRONMENT" == "singlenode-ldap" ]]; then
-    CLI_ARGUMENTS="--server https://presto-master:8443 --keystore-path /etc/openldap/certs/cacerts.jks --keystore-password testldap --user DefaultGroupUser --password LDAPPass123"
+    CLI_ARGUMENTS="--server https://presto-master:8443 --keystore-path /etc/openldap/certs/cacerts.jks --keystore-password testldap --user DefaultGroupUser --password"
+    PRESTO_PASSWORD=LDAPPass123
 fi
 
 # check docker and docker compose installation
