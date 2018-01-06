@@ -63,6 +63,11 @@ before_script:
     if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then
       export ARTIFACTS_UPLOAD_PATH=${ARTIFACTS_UPLOAD_PATH_PR}
     fi
+  - |
+    if [[ -v PRODUCT_TESTS_SPECIFIC_ENVIRONMENT ]]; then
+      wget https://repo1.maven.org/maven2/com/facebook/presto/presto-cli/0.191/presto-cli-0.191-executable.jar
+      export PRESTO_CLI_JAR=`pwd`/presto-cli-0.191-executable.jar
+    fi
 
 script:
   - |
