@@ -45,6 +45,9 @@ function run_in_application_runner_container() {
 }
 
 function check_presto() {
+  if [[ -v PRESTO_PASSWORD ]]; then
+    run_in_application_runner_container export PRESTO_PASSWORD=${PRESTO_PASSWORD}
+  fi
   run_in_application_runner_container \
     java -jar "/docker/volumes/presto-cli/presto-cli-executable.jar" \
     ${CLI_ARGUMENTS} \
