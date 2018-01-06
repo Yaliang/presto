@@ -334,10 +334,8 @@ public class Console
             queryRunner.setSession(session);
         }
         catch (RuntimeException e) {
-            System.err.println("Error running command: " + e.getMessage());
-            if (queryRunner.getSession().isDebug()) {
-                e.printStackTrace();
-            }
+            System.err.println("Error running command: " + e.getMessage() + "\n FinalSQL: " + finalSql);
+            e.printStackTrace();
         }
     }
 
