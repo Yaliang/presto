@@ -56,6 +56,10 @@ public class PrestoLdapCliTests
         implements RequirementsProvider
 {
     @Inject(optional = true)
+    @Named("databases.presto.http_port")
+    private Integer httpPort;
+
+    @Inject(optional = true)
     @Named("databases.presto.cli_ldap_truststore_path")
     private String ldapTruststorePath;
 
@@ -219,6 +223,15 @@ public class PrestoLdapCliTests
         assertThat(trimLines(presto.readRemainingErrorLines())).anySatisfy(line ->
                 assertThat(line).contains("Authentication using username/password requires HTTPS to be enabled"));
         skipAfterTestWithContext();
+    }
+
+    @Test(groups = {LDAP, LDAP_CLI, PROFILE_SPECIFIC_TESTS}, timeOut = TIMEOUT)
+    public void shouldPassQueryForLdapOnHttpPort()
+            throws IOException, InterruptedException
+    {
+        ldapServerAddress = format("https://%s:%s", serverHost, httpPort);
+        launchPrestoCliWithServerArgument("--execute", "select * from hive.default.nation;");
+        assertThat(trimLines(presto.readRemainingOutputLines())).containsAll(nationTableBatchLines);
     }
 
     @Test(groups = {LDAP, LDAP_CLI, PROFILE_SPECIFIC_TESTS}, timeOut = TIMEOUT)
