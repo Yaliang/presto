@@ -19,4 +19,10 @@
             <unpack />
         </artifact>
     </artifactSet>
+
+    <artifactSet to="plugin/twitter-functions">
+        <artifact id="${project.groupId}:presto-strato:zip:${project.version}">
+            <unpack />
+        </artifact>
+    </artifactSet>
 </runtime>
