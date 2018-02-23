@@ -19,10 +19,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.net.UrlEscapers;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static com.google.common.base.Strings.isNullOrEmpty;
 import static com.google.common.base.Strings.nullToEmpty;
 import static java.lang.String.format;
 
@@ -30,13 +30,16 @@ public class StratoTableLayoutHandle
         implements ConnectorTableLayoutHandle
 {
     private final StratoTableHandle table;
+    private final List<String> keys;
     private final String url;
     private final Map<String, String> queryMap;
-    private final String formattedUrl;
+    private final String queryString;
 
     @JsonCreator
     public StratoTableLayoutHandle(
             @JsonProperty("table") StratoTableHandle table,
+            @JsonProperty("keys") List<String> keys,
+            @JsonProperty("pkey") String pkey,
             @JsonProperty("from") String from,
             @JsonProperty("to") String to,
             @JsonProperty("view") String view,
@@ -45,26 +48,33 @@ public class StratoTableLayoutHandle
             @JsonProperty("url") String url)
     {
         this.table = table;
+        this.keys = keys;
         this.url = url;
         this.queryMap = ImmutableMap.<String, String>builder()
+                .put("pkey", nullToEmpty(pkey))
                 .put("from", nullToEmpty(from))
                 .put("to", nullToEmpty(to))
                 .put("view", nullToEmpty(view))
                 .put("prefix", nullToEmpty(prefix))
                 .put("limit", nullToEmpty(limit))
                 .build();
-        this.formattedUrl = queryMap.entrySet().stream()
-                .filter(e -> !isNullOrEmpty(e.getValue()))
+        this.queryString = queryMap.entrySet().stream()
+                .filter(e -> e.getValue() != null && e.getValue().length() > 0)
                 .map(e -> format("%s=%s", e.getKey(), UrlEscapers.urlFormParameterEscaper().escape(e.getValue())))
                 .reduce((a, b) -> format("%s&%s", a, b))
-                .map(s -> format("%s?%s", url, s))
-                .orElse(url);
+                .orElse("");
     }
 
     @JsonProperty
     public StratoTableHandle getTable()
     {
         return table;
+    }
+
+    @JsonProperty
+    public List<String> getKeys()
+    {
+        return keys;
     }
 
     @JsonProperty
@@ -78,9 +88,9 @@ public class StratoTableLayoutHandle
         return queryMap;
     }
 
-    public String getFormattedUrl()
+    public String getFormattedUrl(String key)
     {
-        return formattedUrl;
+        return format(url, key) + (queryString == null || queryString.length() == 0 ? "" : "?" + queryString);
     }
 
     @Override

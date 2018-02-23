@@ -26,11 +26,14 @@ import com.google.common.io.CountingInputStream;
 import io.airlift.slice.Slice;
 import io.airlift.slice.Slices;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static com.facebook.presto.spi.type.BigintType.BIGINT;
 import static com.facebook.presto.spi.type.BooleanType.BOOLEAN;
@@ -40,22 +43,25 @@ import static com.facebook.presto.strato.StratoErrorCode.STRATO_REQUEST_ERROR;
 import static com.facebook.presto.strato.StratoErrorCode.STRATO_VALUE_INVALID;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class StratoRecordCursor
         implements RecordCursor
 {
+    private static TypeReference scanTypeReference = new TypeReference<List<List<Object>>>(){};
+    private static TypeReference fetchTypeReference = new TypeReference<Object>(){};
     private final List<StratoColumnHandle> columnHandles;
     private final int[] fieldToColumnIndex;
     private final List<String> prefilledValues;
 
     private final Iterator<List<Object>> lines;
     private final long totalBytes;
+    private final long nanoStart;
+    private final long nanoEnd;
 
     private List<String> fields;
     private ObjectMapper mapper;
 
-    public StratoRecordCursor(List<StratoColumnHandle> columnHandles, ByteSource byteSource, Map<Integer, String> prefilledValues)
+    public StratoRecordCursor(List<StratoColumnHandle> columnHandles, ByteSource byteSource, Optional<String> key, Map<Integer, String> prefilledValues)
     {
         this.columnHandles = columnHandles;
         this.prefilledValues = prefilledValues.entrySet().stream()
@@ -69,17 +75,32 @@ public class StratoRecordCursor
             fieldToColumnIndex[i] = columnHandle.getOrdinalPosition();
         }
 
+        this.mapper = new ObjectMapper();
+        this.nanoStart = System.nanoTime();
+        Iterator<List<Object>> lines = Collections.emptyIterator();
+        long totalBytes = 0;
         try (CountingInputStream input = new CountingInputStream(byteSource.openStream())) {
-            this.mapper = new ObjectMapper();
-            String json = byteSource.asCharSource(UTF_8).read();
-            System.out.println(json);
-            List<List<Object>> records = mapper.readValue(json, new TypeReference<List<List<Object>>>(){});
-            lines = records.iterator();
+            if (key.isPresent()) {
+                Object value = mapper.readValue(input, fetchTypeReference);
+                lines = Collections.singletonList(Arrays.asList(key.get(), value)).iterator();
+            }
+            else {
+                List<List<Object>> records = mapper.readValue(input, scanTypeReference);
+                lines = records.iterator();
+            }
+
             totalBytes = input.getCount();
+        }
+        catch (FileNotFoundException ignored) {
+            // ignored
         }
         catch (IOException e) {
             throw new PrestoException(STRATO_REQUEST_ERROR, "Failed to read Strato response: " + e.getMessage(), e);
         }
+        this.nanoEnd = System.nanoTime();
+
+        this.lines = lines;
+        this.totalBytes = totalBytes;
     }
 
     @Override
@@ -91,7 +112,7 @@ public class StratoRecordCursor
     @Override
     public long getReadTimeNanos()
     {
-        return 0;
+        return nanoEnd - nanoStart;
     }
 
     @Override
@@ -110,10 +131,11 @@ public class StratoRecordCursor
         List<Object> line = lines.next();
         try {
             fields = ImmutableList.<String>builder()
-                    .add(mapper.writeValueAsString(line.get(0)))
+                    .add(line.get(0).toString())
                     .add(mapper.writeValueAsString(line.get(1)))
                     .addAll(prefilledValues)
                     .build();
+            System.out.println(fields.toString());
         }
         catch (JsonProcessingException e) {
             throw new PrestoException(STRATO_VALUE_INVALID, "Error to reprocess extracted value to json string", e);

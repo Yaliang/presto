@@ -26,6 +26,8 @@ import com.facebook.presto.spi.SchemaTableName;
 import com.facebook.presto.spi.SchemaTablePrefix;
 import com.facebook.presto.spi.TableNotFoundException;
 import com.facebook.presto.spi.connector.ConnectorMetadata;
+import com.facebook.presto.spi.predicate.Range;
+import com.facebook.presto.spi.predicate.SortedRangeSet;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import io.airlift.log.Logger;
@@ -54,13 +56,17 @@ public class StratoMetadata
     public StratoMetadata(StratoConnectorId connectorId)
     {
         this.connectorId = requireNonNull(connectorId, "connectorId is null").toString();
-        this.tables = ImmutableMap.of(new SchemaTableName("strato", "columnpaths"), new StratoTable("None", "strato/columnPaths"));
+        this.tables = ImmutableMap.of(new SchemaTableName("default", "strato_columnpaths"), new StratoTable("None", "strato/columnPaths"),
+                new SchemaTableName("tweet", "core"), new StratoTable("Tweet", "core"),
+                new SchemaTableName("screen_name", "gizmoduck_core"), new StratoTable("ScreenName", "gizmoduck/core"),
+                new SchemaTableName("user", "timeline_home"), new StratoTable("User", "timeline/home"),
+                new SchemaTableName("user", "gizmoduck_core"), new StratoTable("User", "gizmoduck/core"));
     }
 
     @Override
     public List<String> listSchemaNames(ConnectorSession session)
     {
-        return ImmutableList.of("strato");
+        return ImmutableList.of("default", "tweet", "screen_name", "user");
     }
 
     @Override
@@ -79,21 +85,57 @@ public class StratoMetadata
         StratoTableHandle tableHandle = (StratoTableHandle) table;
         StratoTable stratoTable = tables.get(new SchemaTableName(tableHandle.getSchemaName(), tableHandle.getTableName()));
         log.debug(constraint.getSummary().toString(session));
-        Map<String, String> queries = new HashMap<>();
-        constraint.getSummary().getDomains().orElse(new HashMap<>()).entrySet().stream()
-                .filter(columnHandleDomainEntry -> columnHandleDomainEntry.getKey() instanceof StratoColumnHandle)
-                .filter(columnHandleDomainEntry -> columnHandleDomainEntry.getValue().isSingleValue())
-                .forEach(columnHandleDomainEntry -> queries.put(((StratoColumnHandle) columnHandleDomainEntry.getKey()).getColumnName(), ((Slice) columnHandleDomainEntry.getValue().getSingleValue()).toStringUtf8()));
+        Map<String, String> queries = getQueries(constraint);
+        List<String> keys = getKeys(constraint);
+        Optional<Range> spanRange = getKeySpan(constraint);
         log.debug(queries.toString());
+        log.debug(keys.toString());
+
         ConnectorTableLayout layout = new ConnectorTableLayout(new StratoTableLayoutHandle(
                 tableHandle,
-                queries.getOrDefault("_from", ""),
-                queries.getOrDefault("_to", ""),
+                keys,
+                queries.getOrDefault("_pkey", ""),
+                queries.getOrDefault("_from", spanRange.isPresent() ? ((Slice) spanRange.get().getLow().getValue()).toStringUtf8() : ""),
+                queries.getOrDefault("_to", spanRange.isPresent() ? ((Slice) spanRange.get().getHigh().getValue()).toStringUtf8() : ""),
                 queries.getOrDefault("_view", ""),
                 queries.getOrDefault("_prefix", ""),
                 queries.getOrDefault("_limit", ""),
                 stratoTable.getURL()));
         return ImmutableList.of(new ConnectorTableLayoutResult(layout, constraint.getSummary()));
+    }
+
+    private Map<String, String> getQueries(Constraint<ColumnHandle> constraint)
+    {
+        Map<String, String> queries = new HashMap<>();
+        constraint.getSummary().getDomains().orElse(new HashMap<>()).entrySet().stream()
+                .filter(columnHandleDomainEntry -> columnHandleDomainEntry.getKey() instanceof StratoColumnHandle)
+                .filter(columnHandleDomainEntry -> columnHandleDomainEntry.getValue().isSingleValue())
+                .forEach(columnHandleDomainEntry -> queries.put(((StratoColumnHandle) columnHandleDomainEntry.getKey()).getColumnName(), ((Slice) columnHandleDomainEntry.getValue().getSingleValue()).toStringUtf8()));
+        return queries;
+    }
+
+    private List<String> getKeys(Constraint<ColumnHandle> constraint)
+    {
+        return constraint.getSummary().getDomains().orElse(new HashMap<>()).entrySet().stream()
+                .filter(columnHandleDomainEntry -> columnHandleDomainEntry.getKey() instanceof StratoColumnHandle)
+                .filter(columnHandleDomainEntry -> ((StratoColumnHandle) columnHandleDomainEntry.getKey()).getColumnName().equals("key"))
+                .filter(columnHandleDomainEntry -> columnHandleDomainEntry.getValue().getValues() instanceof SortedRangeSet)
+                .map(columnHandleDomainEntry -> columnHandleDomainEntry.getValue().getValues().getRanges().getOrderedRanges().stream()
+                        .filter(Range::isSingleValue)
+                        .map(range -> ((Slice) range.getSingleValue()).toStringUtf8()))
+                .map(values -> ImmutableList.copyOf(values.iterator()))
+                .findFirst()
+                .orElse(ImmutableList.of());
+    }
+
+    private Optional<Range> getKeySpan(Constraint<ColumnHandle> constraint)
+    {
+        return constraint.getSummary().getDomains().orElse(new HashMap<>()).entrySet().stream()
+                .filter(columnHandleDomainEntry -> columnHandleDomainEntry.getKey() instanceof StratoColumnHandle)
+                .filter(columnHandleDomainEntry -> ((StratoColumnHandle) columnHandleDomainEntry.getKey()).getColumnName().equals("key"))
+                .filter(columnHandleDomainEntry -> columnHandleDomainEntry.getValue().getValues() instanceof SortedRangeSet)
+                .map(columnHandleDomainEntry -> ((SortedRangeSet) columnHandleDomainEntry.getValue().getValues()).getSpan())
+                .findFirst();
     }
 
     @Override

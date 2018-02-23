@@ -27,6 +27,7 @@ import javax.inject.Inject;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static com.facebook.presto.strato.StratoErrorCode.STRATO_SPLIT_ERROR;
 import static java.util.Objects.requireNonNull;
@@ -45,17 +46,35 @@ public class StratoSplitManager
     @Override
     public ConnectorSplitSource getSplits(ConnectorTransactionHandle handle, ConnectorSession session, ConnectorTableLayoutHandle layout, SplitSchedulingStrategy splitSchedulingStrategy)
     {
-        StratoTableLayoutHandle layoutHandle = (StratoTableLayoutHandle) layout;
-        StratoTableHandle tableHandle = layoutHandle.getTable();
+        StratoTableLayoutHandle stratoTableLayoutHandle = (StratoTableLayoutHandle) layout;
+        StratoTableHandle stratoTableHandle = stratoTableLayoutHandle.getTable();
         List<ConnectorSplit> splits = new ArrayList<>();
-        try {
-            URI uri = new URI(layoutHandle.getFormattedUrl());
-            splits.add(new StratoSplit(connectorId, tableHandle.getSchemaName(), tableHandle.getTableName(), uri, layoutHandle.getQueryMap()));
+        if (stratoTableLayoutHandle.getKeys() == null || stratoTableLayoutHandle.getKeys().size() == 0) {
+            Optional<ConnectorSplit> split = loadSplit(stratoTableHandle, stratoTableLayoutHandle, "");
+            split.ifPresent(splits::add);
         }
-        catch (Exception e) {
-            throw new PrestoException(STRATO_SPLIT_ERROR, "Invalid strato path: " + layoutHandle.getFormattedUrl(), e);
+        else {
+            stratoTableLayoutHandle.getKeys().stream()
+                    .map(key -> loadSplit(stratoTableHandle, stratoTableLayoutHandle, key))
+                    .forEach(split -> split.ifPresent(splits::add));
         }
 
         return new FixedSplitSource(splits);
+    }
+
+    private Optional<ConnectorSplit> loadSplit(StratoTableHandle stratoTableHandle, StratoTableLayoutHandle stratoTableLayoutHandle, String key)
+    {
+        try {
+            return Optional.of(new StratoSplit(
+                    connectorId,
+                    stratoTableHandle.getSchemaName(),
+                    stratoTableHandle.getTableName(),
+                    key.length() > 0 ? Optional.of(key) : Optional.empty(),
+                    new URI(stratoTableLayoutHandle.getFormattedUrl(key)),
+                    stratoTableLayoutHandle.getQueryMap()));
+        }
+        catch (Exception e) {
+            throw new PrestoException(STRATO_SPLIT_ERROR, "Invalid strato path: " + stratoTableLayoutHandle.getFormattedUrl(key), e);
+        }
     }
 }

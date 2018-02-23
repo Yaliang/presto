@@ -28,6 +28,7 @@ import static java.util.Objects.requireNonNull;
 
 public class StratoTable
 {
+    private static String stratoUrl = "https://strato.twitter.biz";
     private final String space;
     private final String name;
     private final List<StratoColumn> columns;
@@ -45,6 +46,7 @@ public class StratoTable
         this.columns = ImmutableList.of(
                 new StratoColumn("key", createUnboundedVarcharType(), false),
                 new StratoColumn("value", createUnboundedVarcharType(), false),
+                new StratoColumn("_pkey", createUnboundedVarcharType(), true),
                 new StratoColumn("_from", createUnboundedVarcharType(), true),
                 new StratoColumn("_to", createUnboundedVarcharType(), true),
                 new StratoColumn("_view", createUnboundedVarcharType(), true),
@@ -79,7 +81,7 @@ public class StratoTable
     @JsonProperty
     public String getURL()
     {
-        return format("https://strato.twitter.biz/column/%s//%s", space, name);
+        return format("%s/column/%s/", stratoUrl, space) + "%s" + format("/%s", name);
     }
 
     public List<ColumnMetadata> getColumnsMetadata()

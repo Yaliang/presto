@@ -23,6 +23,7 @@ import com.google.common.io.Resources;
 import java.net.MalformedURLException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
 
@@ -32,11 +33,13 @@ public class StratoRecordSet
     private final List<StratoColumnHandle> columnHandles;
     private final List<Type> columnTypes;
     private final ByteSource byteSource;
+    private final Optional<String> key;
     private final Map<Integer, String> prefilledValues;
 
     public StratoRecordSet(StratoSplit split, List<StratoColumnHandle> columnHandles)
     {
         this.prefilledValues = requireNonNull(split, "split is null").getPrefilledValues();
+        this.key = split.getKey();
         this.columnHandles = requireNonNull(columnHandles, "column handles is null");
         ImmutableList.Builder<Type> types = ImmutableList.builder();
         for (StratoColumnHandle column : columnHandles) {
@@ -61,6 +64,6 @@ public class StratoRecordSet
     @Override
     public RecordCursor cursor()
     {
-        return new StratoRecordCursor(columnHandles, byteSource, prefilledValues);
+        return new StratoRecordCursor(columnHandles, byteSource, key, prefilledValues);
     }
 }
