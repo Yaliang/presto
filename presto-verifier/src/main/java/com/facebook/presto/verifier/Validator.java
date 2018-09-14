@@ -72,6 +72,7 @@ public class Validator
     private final String controlPassword;
     private final String controlGateway;
     private final String testGateway;
+    private final String source;
     private final Duration controlTimeout;
     private final Duration testTimeout;
     private final int maxRowCount;
@@ -100,6 +101,7 @@ public class Validator
     public Validator(
             String controlGateway,
             String testGateway,
+            String source,
             Duration controlTimeout,
             Duration testTimeout,
             int maxRowCount,
@@ -118,6 +120,7 @@ public class Validator
         this.controlPassword = queryPair.getControl().getPassword();
         this.controlGateway = requireNonNull(controlGateway, "controlGateway is null");
         this.testGateway = requireNonNull(testGateway, "testGateway is null");
+        this.source = requireNonNull(source, "source is null");
         this.controlTimeout = controlTimeout;
         this.testTimeout = testTimeout;
         this.maxRowCount = maxRowCount;
@@ -478,7 +481,7 @@ public class Validator
         // Required for jdbc drivers that do not implement all/some of these functions (eg. impala jdbc driver)
         // For these drivers, set the database default values in the query database
         try {
-            connection.setClientInfo("ApplicationName", "verifier-test:" + queryPair.getName());
+            connection.setClientInfo("ApplicationName", source);
             connection.setCatalog(query.getCatalog());
             connection.setSchema(query.getSchema());
         }

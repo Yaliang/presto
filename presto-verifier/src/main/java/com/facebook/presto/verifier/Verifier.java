@@ -98,6 +98,7 @@ public class Verifier
                     Validator validator = new Validator(
                             config.getControlGateway(),
                             config.getTestGateway(),
+                            config.getSource(),
                             config.getControlTimeout(),
                             config.getTestTimeout(),
                             config.getMaxRowCount(),
