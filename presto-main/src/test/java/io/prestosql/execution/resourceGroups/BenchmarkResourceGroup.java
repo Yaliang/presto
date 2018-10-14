@@ -14,7 +14,7 @@
 package io.prestosql.execution.resourceGroups;
 
 import io.airlift.units.DataSize;
-import io.prestosql.execution.MockQueryExecution;
+import io.prestosql.execution.MockManagedQueryExecution;
 import io.prestosql.execution.resourceGroups.InternalResourceGroup.RootInternalResourceGroup;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -83,7 +83,7 @@ public class BenchmarkResourceGroup
                 group.setHardConcurrencyLimit(queries);
             }
             for (int i = 0; i < queries; i++) {
-                group.run(new MockQueryExecution(10));
+                group.run(new MockManagedQueryExecution(10));
             }
         }
 

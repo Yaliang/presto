@@ -14,7 +14,7 @@
 package io.prestosql.tests;
 
 import com.google.common.collect.ImmutableMap;
-import io.prestosql.execution.QueryManager;
+import io.prestosql.dispatcher.DispatchManager;
 import io.prestosql.execution.SqlTaskManager;
 import io.prestosql.execution.TestingSessionContext;
 import io.prestosql.memory.LegacyQueryContext;
@@ -54,11 +54,12 @@ public class TestLegacyQueryContext
     public void testLegacyQueryContext()
             throws Exception
     {
-        QueryManager queryManager = queryRunner.getCoordinator().getQueryManager();
+        DispatchManager dispatchManager = queryRunner.getCoordinator().getDispatchManager();
 
-        QueryId queryId = queryManager.createQueryId();
-        queryManager.createQuery(
+        QueryId queryId = dispatchManager.createQueryId();
+        dispatchManager.createQuery(
                 queryId,
+                "slug",
                 new TestingSessionContext(TEST_SESSION),
                 "SELECT * FROM lineitem")
                 .get();
@@ -66,7 +67,7 @@ public class TestLegacyQueryContext
         waitForQueryState(queryRunner, queryId, RUNNING);
 
         // cancel query
-        queryManager.failQuery(queryId, new PrestoException(GENERIC_INTERNAL_ERROR, "mock exception"));
+        queryRunner.getCoordinator().getQueryManager().failQuery(queryId, new PrestoException(GENERIC_INTERNAL_ERROR, "mock exception"));
 
         // assert that LegacyQueryContext is used instead of the DefaultQueryContext
         SqlTaskManager taskManager = (SqlTaskManager) queryRunner.getServers().get(0).getTaskManager();
