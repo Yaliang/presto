@@ -70,6 +70,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.util.concurrent.MoreExecutors.directExecutor;
 import static io.airlift.units.DataSize.succinctBytes;
 import static io.prestosql.execution.BasicStageStats.EMPTY_STAGE_STATS;
+import static io.prestosql.execution.QueryState.DISPATCHING;
 import static io.prestosql.execution.QueryState.FAILED;
 import static io.prestosql.execution.QueryState.FINISHED;
 import static io.prestosql.execution.QueryState.FINISHING;
@@ -472,6 +473,7 @@ public class QueryStateMachine
                 queryStateTimer.getElapsedTime(),
                 queryStateTimer.getQueuedTime(),
                 queryStateTimer.getResourceWaitingTime(),
+                queryStateTimer.getDispatchingTime(),
                 queryStateTimer.getExecutionTime(),
                 queryStateTimer.getAnalysisTime(),
                 queryStateTimer.getDistributedPlanningTime(),
@@ -654,6 +656,12 @@ public class QueryStateMachine
     {
         queryStateTimer.beginWaitingForResources();
         return queryState.setIf(WAITING_FOR_RESOURCES, currentState -> currentState.ordinal() < WAITING_FOR_RESOURCES.ordinal());
+    }
+
+    public boolean transitionToDispatching()
+    {
+        queryStateTimer.beginDispatching();
+        return queryState.setIf(DISPATCHING, currentState -> currentState.ordinal() < DISPATCHING.ordinal());
     }
 
     public boolean transitionToPlanning()
@@ -947,6 +955,7 @@ public class QueryStateMachine
                 queryStats.getElapsedTime(),
                 queryStats.getQueuedTime(),
                 queryStats.getResourceWaitingTime(),
+                queryStats.getDispatchingTime(),
                 queryStats.getExecutionTime(),
                 queryStats.getAnalysisTime(),
                 queryStats.getDistributedPlanningTime(),
