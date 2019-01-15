@@ -22,10 +22,12 @@ import java.io.File;
 public class KerberosConfig
 {
     public static final String HTTP_SERVER_AUTHENTICATION_KRB5_KEYTAB = "http.server.authentication.krb5.keytab";
+    public static final String HTTP_SERVER_AUTHENTICATION_CCACHE = "http.server.authentication.krb5.ccache";
 
     private File kerberosConfig;
     private String serviceName;
     private File keytab;
+    private File ccache;
 
     @NotNull
     public File getKerberosConfig()
@@ -62,6 +64,18 @@ public class KerberosConfig
     public KerberosConfig setKeytab(File keytab)
     {
         this.keytab = keytab;
+        return this;
+    }
+
+    public File getCredentialCache()
+    {
+        return ccache;
+    }
+
+    @Config(HTTP_SERVER_AUTHENTICATION_CCACHE)
+    public KerberosConfig setCredentialCache(File ccache)
+    {
+        this.ccache = ccache;
         return this;
     }
 }
